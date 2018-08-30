@@ -1,0 +1,31 @@
+{
+  "name": "playsnake",
+  "version": "1.0.0",
+  "description": "classic snake game using svg and javascript",
+  "main": "index.js",
+  "scripts": {
+    "build:dev": "webpack --watch --config webpack.dev.js",
+    "build:prod": "webpack --config webpack.prod.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshit1810/playsnake.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/harshit1810/playsnake/issues"
+  },
+  "homepage": "https://github.com/harshit1810/playsnake#readme",
+  "devDependencies": {
+    "@babel/core": "^7.11.6",
+    "@babel/preset-env": "^7.11.5",
+    "babel-loader": "^8.1.0",
+    "clean-webpack-plugin": "^0.1.19",
+    "eslint": "^7.11.0",
+    "eslint-webpack-plugin": "^2.1.0",
+    "html-webpack-plugin": "^3.2.0",
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12"
+  }
+}
