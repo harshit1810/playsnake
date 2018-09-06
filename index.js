@@ -1,4 +1,4 @@
-const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpeed': 5 }) => {
+const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 
 
 	if (!window) {
@@ -44,12 +44,16 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 	};
 	const SNAKE_ARENA = (function () {
 		try {
-			let canvas = document.createElementNS(SVG_XML_NS, 'svg');
+			let canvas = DOCUMENT.createElementNS(SVG_XML_NS, 'svg');
 			canvas.setAttribute('id', CONFIG_ARENA.id);
 			canvas.setAttribute('height', CONFIG_ARENA.height);
 			canvas.setAttribute('width', CONFIG_ARENA.width);
 			canvas.style.border = pixelify(CONFIG_ARENA.borderWidth) + ' solid ' + CONFIG_ARENA.borderColor;
 			DOCUMENT_BODY.appendChild(canvas);
+
+			let scoreDiv = DOCUMENT.createElement('div');
+			scoreDiv.innerHTML = 'Your Score: <span id="score" style="font-weight: bold;">0</span>';
+			DOCUMENT_BODY.appendChild(scoreDiv);
 			return canvas;
 		} catch (e) {
 			return false;
@@ -60,7 +64,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 		return showAlert('Sorry. Unable to start the game.');
 	}
 
-
+	let SCORE_BOARD = DOCUMENT_BODY.querySelector('#score');
 	class Subject {
 		constructor(topic, observers = []) {
 			this.observers = observers;
@@ -70,7 +74,6 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			if (obsrv.element && typeof obsrv.element.id !== 'undefined') {
 				this.observers.push(obsrv);
 			}
-			console.log(this.observers);
 		}
 		removeObserver(obsrv) {
 			this.observers.splice(this.observers.findIndex(obj => obj.element.id === obsrv.element.id), 1);
@@ -90,14 +93,17 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			if (foodEaten && foodEaten == true) {
 				SNAKE.grow(SNAKE_FOOD.drop);
 			}
+			return;
 		}
 	}
+
 	const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
 
 	const LOGGER = {
-		log: console.log
+		'log': console.log,
+		'error': console.error
 	};
-	let INTERVAL_ID;
+	let INTERVAL_SNAKE_MOVEMENT;
 	let SNAKE_FOOD_BONUS_INTERVAL_ID;
 	/**
 	 * configurations
@@ -111,7 +117,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 				'color': arg.primaryColor,
 				'partGap': 0,
 				'length': arg.snakeLength,
-				'speed': 1000 - (config.snakeSpeed * 100),
+				'speed': arg.snakeSpeed * 100,
 				'directionMap': {
 					'37': 'LEFT',
 					'38': 'UP',
@@ -143,6 +149,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 	})({
 		'snakeId': 'the-snake',
 		'snakeFoodId': 'the-snake-food',
+		'snakeSpeed': 5,
 		'primaryColor': 'black',
 		'secondaryColor': 'grey',
 		'alertColor': 'red',
@@ -150,7 +157,58 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 		'snakeSize': 15
 	});
 	let SNAKE_DIRECTION = 39;
-	const SNAKE_DIRECTION_POSITION = [];
+	/**
+	 * store the directions given to the snake
+	 */
+	const DIRECTION_COMMANDS = (function (initCommand) {
+		let commands = [];
+		if (initCommand) {
+			commands.push(initCommand);
+		}
+		return {
+			'add': function (data) {
+				let last = commands[commands.length - 1];
+				if (!last) {
+					commands.push(data);
+					return;
+				}
+				if (last.position.x == data.position.x && last.position.y == data.position.y) {
+					last.direction = data.direction;
+				} else {
+					commands.push(data);
+				}
+			},
+			'getFirst': function () {
+				return commands[0];
+			},
+			'remove': function () {
+				commands.shift();
+				return;
+			},
+			'clear': function () {
+				commands.splice(0, commands.length);
+				return;
+			},
+			'hasCommands': function () {
+				return commands.length > 0 ? true : false;
+			},
+			'getNextTurn': function (snakePartId) {
+				if (typeof DIRECTION_MAP_SNAKE_PART_LAST_TURN[snakePartId] === 'undefined') {
+					return this.getFirst();
+				}
+				let turnMadeIndex = commands.findIndex(com => com.id === DIRECTION_MAP_SNAKE_PART_LAST_TURN[snakePartId]);
+				return (turnMadeIndex == commands.length - 1) ? undefined : commands[turnMadeIndex + 1];
+			}
+		};
+	})({
+		'id': Date.now(),
+		'direction': SNAKE_DIRECTION,
+		'position': {
+			'x': CONFIG.ARENA.center.x,
+			'y': CONFIG.ARENA.center.y
+		}
+	});
+	const DIRECTION_MAP_SNAKE_PART_LAST_TURN = {};
 	function startGame() {
 		function onError() {
 			stopTheSnake();
@@ -169,7 +227,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			}, error => Promise.reject(error)
 		).then(
 			gameEndProcessed => {
-				startTheSnake();
+				startTheSnake(CONFIG.SNAKE.speed);
 			},
 			error => {
 				onError();
@@ -190,32 +248,45 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			}
 		});
 	}
-	function startTheSnake() {
-		INTERVAL_ID = setInterval(() => {
-			moveTheSnake();
-		}, CONFIG.SNAKE.speed);
-	}
-	function moveTheSnake() {
-		setTimeout(() => {
+	function startTheSnake(interval) {
+		INTERVAL_SNAKE_MOVEMENT = setInterval(() => {
+			// let command = DIRECTION_COMMANDS.getFirst();
+			let newDirection = SNAKE_DIRECTION;
+			// if (command) {
+			// 	newDirection = command.direction;
+			// 	SNAKE_DIRECTION = command.direction;
+			// }
+			SNAKE.changeDirection(newDirection);
 			SNAKE.start();
-		}, 0);
+		}, interval);
+	}
+	function increaseSnakeSpeed() {
+		WINDOW.clearInterval(INTERVAL_SNAKE_MOVEMENT);
+		startTheSnake(CONFIG.SNAKE.speed - SNAKE.length * 50);
 	}
 	function stopTheSnake() {
 		SNAKE = null;
-		WINDOW.clearInterval(INTERVAL_ID);
+		WINDOW.clearInterval(INTERVAL_SNAKE_MOVEMENT);
 	}
 	function stopTheSnakeFood() {
 		SNAKE_FOOD = null;
 	}
 	function addButtonListeners() {
 		DOCUMENT.addEventListener('keydown', function (event) {
-			if (CONFIG_ARENA.supportedKeys.includes(event.keyCode)
-				&& SNAKE_DIRECTION !== event.keyCode
-				&& event.keyCode !== CONFIG_ARENA.keyConfig[String(SNAKE_DIRECTION)].reverse) {
+			/** listen only for direction keys */
+			if (CONFIG_ARENA.supportedKeys.indexOf(event.keyCode) === -1) {
+				return;
+			}
+			/**
+			 * the new direction should not be the current direction 
+			 * or the opposite direction.
+			 */
+			if (SNAKE_DIRECTION != event.keyCode &&
+				event.keyCode != CONFIG_ARENA.keyConfig[String(SNAKE_DIRECTION)].reverse) {
 				SNAKE_DIRECTION = event.keyCode;
-				SNAKE.changeDirection(SNAKE_DIRECTION);
-				SNAKE_DIRECTION_POSITION.push({
-					'direction': SNAKE_DIRECTION,
+				DIRECTION_COMMANDS.add({
+					'id': Date.now(),
+					'direction': event.keyCode,
 					'position': {
 						'x': SNAKE.head.x,
 						'y': SNAKE.head.y
@@ -225,13 +296,15 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 		});
 		return;
 	}
+	function incrementScore() {
+		SCORE_BOARD.innerHTML = +SCORE_BOARD.innerHTML + 10
+	}
 	/**
 	 * Snake
 	 */
 	class Snake {
-		constructor(arena, startX, startY, color = CONFIG.SNAKE.color) {
-			this.direction = SNAKE_DIRECTION;
-			this.head = new SnakePart(arena, startX, startY, SNAKE_DIRECTION, color);
+		constructor(arena, startX, startY, direction, color = CONFIG.SNAKE.color) {
+			this.head = new SnakePart(arena, startX, startY, direction, color);
 			this.tail = this.head;
 			this.arena = arena;
 			this.UP = function () {
@@ -247,18 +320,10 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 				this.move(CONFIG.SNAKE.width * - 1, 0);
 			};
 			this.turningPoints = [];
+			this.length = 1;
 		}
-		get length() {
-			let _part = this.head;
-			let count = (_part !== null) ? 1 : 0;
-			while (_part.next !== null) {
-				_part = _part.next;
-				count += 1;
-			}
-			return count;
-		}
-		changeDirection() {
-			this.head.direction = SNAKE_DIRECTION;
+		changeDirection(newDirection) {
+			this.head.direction = newDirection;
 		}
 		grow(next) {
 			let { x, y } = this.tail.getXYOfNextPart();
@@ -266,7 +331,9 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			this.tail.next = newPart;
 			newPart.prev = this.tail;
 			this.tail = newPart;
+			this.length += 1;
 			SNAKE_PART_POSITION_UPDATER.addObserver(this.tail);
+			incrementScore();
 			if (typeof next === 'function') {
 				next();
 			}
@@ -285,11 +352,12 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			}
 		}
 		start() {
-			this[CONFIG.SNAKE.directionMap[String(SNAKE_DIRECTION)]]();
+			this[CONFIG.SNAKE.directionMap[String(this.head.direction)]]();
 		}
 		isEatingFood() {
 			let head = this.head;
 			if (head.x < SNAKE_FOOD.x && SNAKE_FOOD.x < head.x2 && head.y < SNAKE_FOOD.y && SNAKE_FOOD.y < head.y2) {
+				SNAKE_FOOD.hide();
 				return true;
 			}
 			return false;
@@ -307,7 +375,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 		}
 		moveAllParts(foodEaten) {
 			if (this.length === 1) {
-				SNAKE_DIRECTION_POSITION.shift();
+				DIRECTION_COMMANDS.clear();
 			}
 			SNAKE_PART_POSITION_UPDATER.notify(foodEaten);
 		}
@@ -316,7 +384,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 		constructor(arena, x, y, dirx, color) {
 			let snakeLen = SNAKE.length;
 			this.id = (typeof snakeLen !== 'undefined' ? CONFIG.SNAKE.id + '-part' + (SNAKE.length + 1) : CONFIG.SNAKE.id);
-			this.direction = SNAKE_DIRECTION;
+			this.direction = dirx;
 			this.element = (() => {
 				let _elem = DOCUMENT.createElementNS(SVG_XML_NS, CONFIG.SNAKE.elemType);
 				_elem.setAttribute('id', this.id);
@@ -358,30 +426,36 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 			return this.id === SNAKE.tail.id;
 		}
 		nextXY() {
+			let nextPosition = {
+				'x': this.x, 'y': this.y
+			}
 			switch (this.direction) {
 				case 37:
-					this.x -= CONFIG.SNAKE.width;
+					nextPosition.x -= CONFIG.SNAKE.width;
 					break;
 				case 38:
-					this.y -= CONFIG.SNAKE.width;
+					nextPosition.y -= CONFIG.SNAKE.width;
 					break;
 				case 39:
-					this.x += CONFIG.SNAKE.width;
+					nextPosition.x += CONFIG.SNAKE.width;
 					break;
 				case 40:
-					this.y += CONFIG.SNAKE.width;
+					nextPosition.y += CONFIG.SNAKE.width;
 					break;
 			}
-
-			if (SNAKE_DIRECTION_POSITION.length > 0 &&
-				SNAKE_DIRECTION_POSITION[0]['position']['x'] == this.x &&
-				SNAKE_DIRECTION_POSITION[0]['position']['y'] == this.y) {
-				this.direction = SNAKE_DIRECTION_POSITION[0]['direction'];
-				if (this.isTail()) {
-					SNAKE_DIRECTION_POSITION.shift();
+			nextPosition = SnakePart.checkBoundaryPosition(this.direction, nextPosition);
+			this.x = nextPosition.x;
+			this.y = nextPosition.y;
+			if (DIRECTION_COMMANDS.hasCommands()) {
+				let _command = DIRECTION_COMMANDS.getNextTurn(this.id);
+				if (_command && _command.position.x == this.x && _command.position.y == this.y) {
+					this.direction = _command.direction;
+					DIRECTION_MAP_SNAKE_PART_LAST_TURN[this.id] = _command.id;
+					if (this.isTail()) {
+						DIRECTION_COMMANDS.remove();
+					}
 				}
 			}
-
 		}
 		getXYOfNextPart() {
 			let [_x, _y] = [this.x, this.y];
@@ -476,7 +550,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 						if (_x % multipleOf === 0 && _y % multipleOf === 0) {
 							WINDOW.clearInterval(interval);
 							res({
-								x: _x, y: _y
+								x: _x + 2, y: _y + 2
 							});
 						} else {
 							[_x, _y] = [getRandomX(), getRandomY()];
@@ -499,6 +573,10 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 				}
 			);
 		}
+		hide() {
+			this.x = -1;
+			this.y = -1;
+		}
 	}
 	class SnakeFoodBonus {
 		constructor(x, y, color = CONFIG.SNAKE_FOOD_BONUS.color, size = CONFIG.SNAKE_FOOD_BONUS.size) {
@@ -511,10 +589,12 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500, 'snakeSpee
 	let SNAKE = (function () {
 		let theSnake;
 		function initSnake() {
+			let firstCommand = DIRECTION_COMMANDS.getFirst();
 			let _snake = new Snake(
 				SNAKE_ARENA,
-				CONFIG.ARENA.center.x,
-				CONFIG.ARENA.center.y,
+				firstCommand.position.x,
+				firstCommand.position.y,
+				firstCommand.direction,
 				CONFIG.SNAKE.color
 			);
 			return _snake;
