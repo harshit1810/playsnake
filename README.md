@@ -4,10 +4,11 @@ classic snake game in your browser
 
 # How to use
 
-Open the file `playsnake/dist/index.html`, and the game will start
+Open the file `playsnake/dist/index.html` to play
 
 # Todos
 
-- [ ] implement game pause / play
+- [x] implement game pause / play
 - [ ] implement bonus food
-- [ ] implement snake movement transition
+- [x] implement snake movement transition
+- [ ] game over when snake eats itself

@@ -11,6 +11,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	const WINDOW = window;
 	const DOCUMENT = WINDOW.document;
 	const DOCUMENT_BODY = DOCUMENT.body;
+	DOCUMENT_BODY.style.fontFamily = 'Candara';
 	const [SVG_XML_NS, RENDER_UNIT] = ['http://www.w3.org/2000/svg', 'px'];
 	const pixelify = (function (number) {
 		return String(number).trim().concat(this);
@@ -39,11 +40,55 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			'40': {
 				'reverse': 38
 			}
+		},
+		'pauseButton': {
+			'id': 'pause-play-snake',
+			'text': 'Pause',
+			'order': '0',
+			'clickHandler': function (event) {
+				pauseGame();
+				PAUSE_BUTTON.setAttribute('disabled', 'true');
+				if (PLAY_BUTTON.hasAttribute('disabled')) {
+					PLAY_BUTTON.removeAttribute('disabled');
+				}
+			}
+		},
+		'resumeButton': {
+			'id': 'resume-play-snake',
+			'text': 'Resume',
+			'order': '1',
+			'clickHandler': function (event) {
+				resumeGame();
+				PLAY_BUTTON.setAttribute('disabled', 'true');
+				if (PAUSE_BUTTON.hasAttribute('disabled')) {
+					PAUSE_BUTTON.removeAttribute('disabled');
+				}
+			}
 		}
-
 	};
 	const SNAKE_ARENA = (function () {
 		try {
+			let gameControlDiv = DOCUMENT.createElement('div');
+			gameControlDiv.setAttribute('style', 'display:flex ; flex-direction:row ; flex-wrap:nowrap; width:' + pixelify(CONFIG_ARENA.width) + '; padding:1% 0%;');
+			DOCUMENT_BODY.appendChild(gameControlDiv);
+
+			let styleString = 'padding:2% 2%; border-radius:5px; flex:0 1 20%; text-align:center; align-self:flex-end;';
+			let pauseBtn = DOCUMENT.createElement('button');
+			pauseBtn.setAttribute('id', CONFIG_ARENA.pauseButton.id);
+			pauseBtn.setAttribute('style', styleString);
+			pauseBtn.style.order = CONFIG_ARENA.pauseButton.order;
+			pauseBtn.innerHTML = CONFIG_ARENA.pauseButton.text;
+			gameControlDiv.appendChild(pauseBtn);
+			pauseBtn.addEventListener('click', CONFIG_ARENA.pauseButton.clickHandler);
+
+			let playBtn = DOCUMENT.createElement('button');
+			playBtn.setAttribute('style', styleString + ' margin-left:2%;');
+			playBtn.setAttribute('id', CONFIG_ARENA.resumeButton.id);
+			playBtn.style.order = CONFIG_ARENA.resumeButton.order;
+			playBtn.innerHTML = CONFIG_ARENA.resumeButton.text;
+			gameControlDiv.appendChild(playBtn);
+			playBtn.addEventListener('click', CONFIG_ARENA.resumeButton.clickHandler);
+
 			let canvas = DOCUMENT.createElementNS(SVG_XML_NS, 'svg');
 			canvas.setAttribute('id', CONFIG_ARENA.id);
 			canvas.setAttribute('height', CONFIG_ARENA.height);
@@ -65,6 +110,8 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	}
 
 	let SCORE_BOARD = DOCUMENT_BODY.querySelector('#score');
+	let PAUSE_BUTTON = DOCUMENT_BODY.querySelector('#' + CONFIG_ARENA.pauseButton.id);
+	let PLAY_BUTTON = DOCUMENT_BODY.querySelector('#' + CONFIG_ARENA.resumeButton.id);
 	class Subject {
 		constructor(topic, observers = []) {
 			this.observers = observers;
@@ -115,15 +162,15 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				'elemType': 'rect',
 				'width': arg.snakeSize,
 				'color': arg.primaryColor,
-				'partGap': 0,
 				'length': arg.snakeLength,
-				'speed': arg.snakeSpeed * 100,
+				'speed': arg.snakeSpeed,
 				'directionMap': {
 					'37': 'LEFT',
 					'38': 'UP',
 					'39': 'RIGHT',
 					'40': 'DOWN'
-				}
+				},
+				'step': 1
 			},
 			'SNAKE_PART': {
 				'idPrefix': arg.snakeId + '-part'
@@ -133,7 +180,11 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				'elemType': 'circle',
 				'color': arg.secondaryColor,
 				'size': Math.floor(arg.snakeSize / 3),
-				'startAfter': 2
+				'startAfter': 2,
+				'limits': {
+					'x': CONFIG_ARENA.limits.x - arg.snakeSize,
+					'y': CONFIG_ARENA.limits.y - arg.snakeSize
+				}
 			},
 			'SNAKE_FOOD_BONUS': {
 				'color': arg.alertColor,
@@ -149,7 +200,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	})({
 		'snakeId': 'the-snake',
 		'snakeFoodId': 'the-snake-food',
-		'snakeSpeed': 5,
+		'snakeSpeed': 20,
 		'primaryColor': 'black',
 		'secondaryColor': 'grey',
 		'alertColor': 'red',
@@ -210,11 +261,6 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	});
 	const DIRECTION_MAP_SNAKE_PART_LAST_TURN = {};
 	function startGame() {
-		function onError() {
-			stopTheSnake();
-			stopTheSnakeFood();
-			showAlert(ERROR_MESSAGES.startGame);
-		}
 		SNAKE.get().then(
 			snake => {
 				SNAKE = snake;
@@ -230,16 +276,19 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				startTheSnake(CONFIG.SNAKE.speed);
 			},
 			error => {
-				onError();
+				processStopGame();
+				showAlert(ERROR_MESSAGES.startGame);
 			}
 		);
+	}
+	function showAlert(message) {
+		WINDOW.alert(message);
 	}
 	function prepareGameEnd() {
 		return new Promise(function (resolve, reject) {
 			try {
 				WINDOW.addEventListener('unload', () => {
-					stopTheSnake();
-					stopTheSnakeFood();
+					processStopGame();
 				});
 				addButtonListeners();
 				resolve(true);
@@ -248,6 +297,28 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			}
 		});
 	}
+	/** pause the game. 
+	 * when pause button is clicked.
+	*/
+	function pauseGame() {
+		stopMovingTheSnake()
+		LOGGER.log('game paused');
+	}
+	/** resume the game. 
+	 * when play button is clicked.
+	*/
+	function resumeGame() {
+		startTheSnake(CONFIG.SNAKE.speed);
+		LOGGER.log('game resumed');
+	}
+	function processStopGame() {
+		stopTheSnake();
+		stopTheSnakeFood();
+	}
+	/**
+	 * start moving the snake after specified interval.
+	 * @param {number} interval.
+	 */
 	function startTheSnake(interval) {
 		INTERVAL_SNAKE_MOVEMENT = setInterval(() => {
 			// let command = DIRECTION_COMMANDS.getFirst();
@@ -266,10 +337,17 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	}
 	function stopTheSnake() {
 		SNAKE = null;
+		stopMovingTheSnake();
+	}
+	function stopMovingTheSnake() {
 		WINDOW.clearInterval(INTERVAL_SNAKE_MOVEMENT);
 	}
 	function stopTheSnakeFood() {
 		SNAKE_FOOD = null;
+	}
+	function stopTheGame() {
+		WINDOW.alert('GAME OVER\nYou Scored ' + SCORE_BOARD.innerHTML + ' points.');
+		processStopGame();
 	}
 	function addButtonListeners() {
 		DOCUMENT.addEventListener('keydown', function (event) {
@@ -308,16 +386,16 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			this.tail = this.head;
 			this.arena = arena;
 			this.UP = function () {
-				this.move(0, CONFIG.SNAKE.width * -1);
+				this.move(0, CONFIG.SNAKE.step * -1);
 			};
 			this.DOWN = function () {
-				this.move(0, CONFIG.SNAKE.width);
+				this.move(0, CONFIG.SNAKE.step);
 			};
 			this.RIGHT = function () {
-				this.move(CONFIG.SNAKE.width, 0);
+				this.move(CONFIG.SNAKE.step, 0);
 			};
 			this.LEFT = function () {
-				this.move(CONFIG.SNAKE.width * - 1, 0);
+				this.move(CONFIG.SNAKE.step * - 1, 0);
 			};
 			this.turningPoints = [];
 			this.length = 1;
@@ -368,6 +446,11 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			let { x: nextX, y: nextY } = SnakePart.checkBoundaryPosition(_part.direction, {
 				'x': _part_x_pos + xvalue, 'y': _part_y_pos + yvalue
 			});
+			let isGoingToEat = this.isEatingItself(nextX, nextY);
+			if (isGoingToEat) {
+				stopTheGame();
+				return;
+			}
 			_part.x = nextX;
 			_part.y = nextY;
 			let isEatingFood = this.isEatingFood();
@@ -378,6 +461,29 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				DIRECTION_COMMANDS.clear();
 			}
 			SNAKE_PART_POSITION_UPDATER.notify(foodEaten);
+		}
+		isEatingItself(nextX, nextY) {
+			let partInFront;
+			let matcherFunction = function (part) {
+				if (part.x === nextX && part.y === nextY) {
+					partInFront = part;
+					return true;
+				}
+				return false;
+			}
+			let head = SNAKE.head.next;
+			while (head !== null) {
+				let isGoingToEat = matcherFunction(head);
+				if (isGoingToEat) {
+					break;
+				}
+				head = head.next;
+			}
+			if (typeof partInFront === 'undefined') {
+				return false;
+			} else {
+				return true;
+			}
 		}
 	}
 	class SnakePart {
@@ -391,9 +497,12 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				_elem.setAttribute('tabIndex', snakeLen);
 				_elem.setAttribute('x', x);
 				_elem.setAttribute('y', y);
+				_elem.setAttribute('rx', CONFIG.SNAKE.width);
+				_elem.setAttribute('ry', CONFIG.SNAKE.width);
 				_elem.setAttribute('fill', color);
 				_elem.setAttribute('width', pixelify(CONFIG.SNAKE.width));
 				_elem.setAttribute('height', pixelify(CONFIG.SNAKE.width));
+				//_elem.style.transition = CONFIG.SNAKE.transition;
 				arena.appendChild(_elem);
 				return _elem;
 			})();
@@ -431,16 +540,16 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			}
 			switch (this.direction) {
 				case 37:
-					nextPosition.x -= CONFIG.SNAKE.width;
+					nextPosition.x -= CONFIG.SNAKE.step;
 					break;
 				case 38:
-					nextPosition.y -= CONFIG.SNAKE.width;
+					nextPosition.y -= CONFIG.SNAKE.step;
 					break;
 				case 39:
-					nextPosition.x += CONFIG.SNAKE.width;
+					nextPosition.x += CONFIG.SNAKE.step;
 					break;
 				case 40:
-					nextPosition.y += CONFIG.SNAKE.width;
+					nextPosition.y += CONFIG.SNAKE.step;
 					break;
 			}
 			nextPosition = SnakePart.checkBoundaryPosition(this.direction, nextPosition);
@@ -537,10 +646,10 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		}
 		static getNextFoodPosition() {
 			function getRandomX() {
-				return Math.floor(Math.random() * (CONFIG_ARENA.limits.x - CONFIG.SNAKE_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
+				return Math.floor(Math.random() * (CONFIG.SNAKE_FOOD.limits.x - CONFIG.SNAKE_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
 			}
 			function getRandomY() {
-				return Math.floor(Math.random() * (CONFIG_ARENA.limits.y - CONFIG.SNAKE_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
+				return Math.floor(Math.random() * (CONFIG.SNAKE_FOOD.limits.y - CONFIG.SNAKE_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
 			}
 			return new Promise(function (resolve, reject) {
 				let [_x, _y] = [getRandomX(), getRandomY()];
