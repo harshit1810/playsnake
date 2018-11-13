@@ -15,7 +15,7 @@ module.exports = {
         rules: [
             {
                 test: /^index.js$/,
-                exclude: '/node_modules|dist|webpack*/',
+                exclude: '/node_modules|dist|docs|webpack*/',
                 use: {
                     loader: 'babel-loader',
                     options: {
@@ -27,6 +27,6 @@ module.exports = {
     },
     output: {
         filename: 'playsnake.webpack.min.js',
-        path: path.resolve(__dirname, 'dist')
+        path: path.resolve(__dirname, 'docs')
     }
 };
