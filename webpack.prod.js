@@ -6,7 +6,7 @@ module.exports = {
     mode: 'production',
     entry: './index.js',
     plugins: [
-        new CleanWebpackPlugin(['dist']),
+        new CleanWebpackPlugin(['docs']),
         new HtmlWebpackPlugin({
             title: 'Classic Snake Game'
         })

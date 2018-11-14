@@ -114,7 +114,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	let PLAY_BUTTON = DOCUMENT_BODY.querySelector('#' + CONFIG_ARENA.resumeButton.id);
 	class Subject {
 		constructor(topic, observers = []) {
-			this.observers = observers;
+			this.observers = observers; // list of snake parts
 			this.topic = topic;
 		}
 		addObserver(obsrv) {
@@ -127,7 +127,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		}
 		notify() {
 			this.observers.forEach(obsrv => {
-				obsrv[this.topic]();
+				obsrv[this.topic]();	// call the topic for each snake part
 			});
 		}
 	}
@@ -151,7 +151,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		'error': console.error
 	};
 	let INTERVAL_SNAKE_MOVEMENT;
-	let SNAKE_FOOD_BONUS_INTERVAL_ID;
+	let INTERVAL_BONUS_FOOD;
 	/**
 	 * configurations
 	 */
@@ -184,11 +184,21 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 				'limits': {
 					'x': CONFIG_ARENA.limits.x - arg.snakeSize,
 					'y': CONFIG_ARENA.limits.y - arg.snakeSize
-				}
+				},
+				'points': arg.foodPoints
 			},
-			'SNAKE_FOOD_BONUS': {
+			'SNAKE_BONUS_FOOD': {
+				'id': arg.snakeBonusFoodId,
 				'color': arg.alertColor,
-				'size': pixelify(arg.snakeSize * 2)
+				'elemType': 'circle',
+				'size': arg.snakeSize,
+				'startAfter': 30,
+				'limits': {
+					'x': CONFIG_ARENA.limits.x - (arg.snakeSize * 2),
+					'y': CONFIG_ARENA.limits.y - (arg.snakeSize * 2)
+				},
+				'points': arg.bonusFoodPoints,
+				'duration': 10
 			},
 			'ARENA': {
 				'center': {
@@ -200,12 +210,15 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	})({
 		'snakeId': 'the-snake',
 		'snakeFoodId': 'the-snake-food',
+		'snakeBonusFoodId': 'the-snake-bonus-food',
 		'snakeSpeed': 20,
 		'primaryColor': 'black',
 		'secondaryColor': 'grey',
 		'alertColor': 'red',
 		'snakeLength': 1,
-		'snakeSize': 15
+		'snakeSize': 15,
+		'foodPoints': 5,
+		'bonusFoodPoints': 10
 	});
 	let SNAKE_DIRECTION = 39;
 	/**
@@ -260,22 +273,27 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		}
 	});
 	const DIRECTION_MAP_SNAKE_PART_LAST_TURN = {};
+	/**
+	 * start the game
+	 */
 	function startGame() {
+		// render the snake
 		SNAKE.get().then(
-			snake => {
+			function (snake) {
 				SNAKE = snake;
-				return SNAKE_FOOD.get();
+				return SNAKE_FOOD.get();	// render snake food
 			}, error => Promise.reject(error)
 		).then(
-			snakeFood => {
+			function (snakeFood) {
 				SNAKE_FOOD = snakeFood;
+				initSnakeBonusFood()	// start bonus food
 				return prepareGameEnd();
 			}, error => Promise.reject(error)
 		).then(
-			gameEndProcessed => {
+			function (gameEndProcessed) {
 				startTheSnake(CONFIG.SNAKE.speed);
 			},
-			error => {
+			function (error) {
 				processStopGame();
 				showAlert(ERROR_MESSAGES.startGame);
 			}
@@ -301,7 +319,8 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	 * when pause button is clicked.
 	*/
 	function pauseGame() {
-		stopMovingTheSnake()
+		stopMovingTheSnake();
+		stopBonusFood();
 		LOGGER.log('game paused');
 	}
 	/** resume the game. 
@@ -309,18 +328,44 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	*/
 	function resumeGame() {
 		startTheSnake(CONFIG.SNAKE.speed);
+		startBonusFood(CONFIG.SNAKE_BONUS_FOOD.startAfter);
 		LOGGER.log('game resumed');
 	}
 	function processStopGame() {
 		stopTheSnake();
 		stopTheSnakeFood();
+		stopBonusFood();
+	}
+	function initSnakeBonusFood() {
+		SNAKE_BONUS_FOOD.get().then(
+			function (food) {
+				SNAKE_BONUS_FOOD = food;
+				startBonusFood(CONFIG.SNAKE_BONUS_FOOD.startAfter);
+			},
+			function (errorInBonusFood) {
+
+			}
+		);
+	}
+	/**
+	 * stop dropping the bonus food
+	 */
+	function stopBonusFood() {
+		WINDOW.clearInterval(INTERVAL_BONUS_FOOD);
+	}
+	/**
+	 * initialize dropping of bonus food
+	 * @param {number} interval seconds
+	 */
+	function startBonusFood(interval) {
+		INTERVAL_BONUS_FOOD = setInterval(SNAKE_BONUS_FOOD.drop, interval * 1000);
 	}
 	/**
 	 * start moving the snake after specified interval.
 	 * @param {number} interval.
 	 */
 	function startTheSnake(interval) {
-		INTERVAL_SNAKE_MOVEMENT = setInterval(() => {
+		INTERVAL_SNAKE_MOVEMENT = setInterval(function () {
 			// let command = DIRECTION_COMMANDS.getFirst();
 			let newDirection = SNAKE_DIRECTION;
 			// if (command) {
@@ -344,6 +389,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 	}
 	function stopTheSnakeFood() {
 		SNAKE_FOOD = null;
+		SNAKE_BONUS_FOOD = null;
 	}
 	function stopTheGame() {
 		WINDOW.alert('GAME OVER\nYou Scored ' + SCORE_BOARD.innerHTML + ' points.');
@@ -374,8 +420,8 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		});
 		return;
 	}
-	function incrementScore() {
-		SCORE_BOARD.innerHTML = +SCORE_BOARD.innerHTML + 10
+	function incrementScore(points) {
+		SCORE_BOARD.innerHTML = +SCORE_BOARD.innerHTML + points;
 	}
 	/**
 	 * Snake
@@ -403,6 +449,11 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		changeDirection(newDirection) {
 			this.head.direction = newDirection;
 		}
+		/**
+		 * adds a snake part at the tail
+		 * @param {function} next a callback
+		 * @returns undefined
+		 */
 		grow(next) {
 			let { x, y } = this.tail.getXYOfNextPart();
 			let newPart = new SnakePart(SNAKE.arena, x, y, this.tail.direction, this.tail.color);
@@ -411,7 +462,8 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			this.tail = newPart;
 			this.length += 1;
 			SNAKE_PART_POSITION_UPDATER.addObserver(this.tail);
-			incrementScore();
+			incrementScore(CONFIG.SNAKE_FOOD.points);
+			// drop food pellet
 			if (typeof next === 'function') {
 				next();
 			}
@@ -440,13 +492,24 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			}
 			return false;
 		}
+		isEatingBonusFood() {
+			let head = this.head;
+			let x1 = SNAKE_BONUS_FOOD.x - CONFIG.SNAKE_BONUS_FOOD.size - 1;
+			let x2 = SNAKE_BONUS_FOOD.x + CONFIG.SNAKE_BONUS_FOOD.size - 1;
+			let y1 = SNAKE_BONUS_FOOD.y - CONFIG.SNAKE_BONUS_FOOD.size - 1;
+			let y2 = SNAKE_BONUS_FOOD.y + CONFIG.SNAKE_BONUS_FOOD.size - 1;
+			if (x1 < head.x && head.x < x2 && y1 < head.y && head.y < y2) {
+				return true;
+			}
+			return false;
+		}
 		move(xvalue, yvalue) {
 			let _part = this.head;
 			let [_part_x_pos, _part_y_pos] = [_part.x, _part.y];
 			let { x: nextX, y: nextY } = SnakePart.checkBoundaryPosition(_part.direction, {
 				'x': _part_x_pos + xvalue, 'y': _part_y_pos + yvalue
 			});
-			let isGoingToEat = this.isEatingItself(nextX, nextY);
+			let isGoingToEat = this.isEatingItself();
 			if (isGoingToEat) {
 				stopTheGame();
 				return;
@@ -454,6 +517,10 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			_part.x = nextX;
 			_part.y = nextY;
 			let isEatingFood = this.isEatingFood();
+			if (this.isEatingBonusFood()) {
+				SNAKE_BONUS_FOOD.hide();
+				incrementScore(CONFIG.SNAKE_BONUS_FOOD.points);
+			}
 			this.moveAllParts(isEatingFood);
 		}
 		moveAllParts(foodEaten) {
@@ -462,28 +529,48 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			}
 			SNAKE_PART_POSITION_UPDATER.notify(foodEaten);
 		}
-		isEatingItself(nextX, nextY) {
-			let partInFront;
-			let matcherFunction = function (part) {
-				if (part.x === nextX && part.y === nextY) {
-					partInFront = part;
-					return true;
+		/**
+		 * @returns {boolean} indicates wether the snake is going to eat itself
+		 */
+		isEatingItself() {
+			let isGoingToEat = false;
+			let nextPart = SNAKE.head.next;
+			let snakeDirection = SNAKE.head.direction;
+			while (nextPart !== null) {
+				// check for tail node and nodes which are traveliing in different direction than the head
+				if (nextPart.direction !== snakeDirection || nextPart.id === SNAKE.tail.id) {
+					switch (snakeDirection) {
+						case 37:
+							if (SNAKE.head.y === nextPart.y && SNAKE.head.x > nextPart.x && SNAKE.head.x <= nextPart.x2) {
+								isGoingToEat = true;
+							}
+							break;
+						case 38:
+							if (SNAKE.head.x === nextPart.x && SNAKE.head.y > nextPart.y && SNAKE.head.y <= nextPart.y2) {
+								isGoingToEat = true;
+							}
+							break;
+						case 39:
+							if (SNAKE.head.y === nextPart.y && SNAKE.head.x2 < nextPart.x2 && SNAKE.head.x2 >= nextPart.x) {
+								isGoingToEat = true;
+							}
+							break;
+						case 40:
+							if (SNAKE.head.x === nextPart.x && SNAKE.head.y2 < nextPart.y2 && SNAKE.head.y2 >= nextPart.y) {
+								isGoingToEat = true;
+							}
+							break;
+					}
+					if (isGoingToEat) {
+						break;
+					}
 				}
-				return false;
+				nextPart = nextPart.next;
 			}
-			let head = SNAKE.head.next;
-			while (head !== null) {
-				let isGoingToEat = matcherFunction(head);
-				if (isGoingToEat) {
-					break;
-				}
-				head = head.next;
-			}
-			if (typeof partInFront === 'undefined') {
-				return false;
-			} else {
+			if (isGoingToEat) {
 				return true;
 			}
+			return false;
 		}
 	}
 	class SnakePart {
@@ -534,6 +621,9 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 		isTail() {
 			return this.id === SNAKE.tail.id;
 		}
+		/**
+		 * method calculates the next coordinates for a part on each step
+		 */
 		nextXY() {
 			let nextPosition = {
 				'x': this.x, 'y': this.y
@@ -621,6 +711,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			if (!(SNAKE_FOOD instanceof SnakeFood)) {
 				this.element = (() => {
 					let _e = DOCUMENT.createElementNS(SVG_XML_NS, CONFIG.SNAKE_FOOD.elemType);
+					_e.setAttribute('id', CONFIG.SNAKE_FOOD.id);
 					_e.setAttribute('cx', x);
 					_e.setAttribute('cy', y);
 					_e.setAttribute('r', size);
@@ -683,16 +774,85 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			);
 		}
 		hide() {
-			this.x = -1;
-			this.y = -1;
+			this.x = -10;
+			this.y = -10;
 		}
 	}
 	class SnakeFoodBonus {
-		constructor(x, y, color = CONFIG.SNAKE_FOOD_BONUS.color, size = CONFIG.SNAKE_FOOD_BONUS.size) {
-			this.x = x;
-			this.y = y;
-			this.fill = color;
-			this.radius = size;
+		constructor(arena, x, y, color = CONFIG.SNAKE_BONUS_FOOD.color, size = CONFIG.SNAKE_BONUS_FOOD.size) {
+			if (!(SNAKE_BONUS_FOOD instanceof SnakeFoodBonus)) {
+				this.element = (() => {
+					let _e = DOCUMENT.createElementNS(SVG_XML_NS, CONFIG.SNAKE_BONUS_FOOD.elemType);
+					_e.setAttribute('id', CONFIG.SNAKE_BONUS_FOOD.id);
+					_e.setAttribute('cx', x);
+					_e.setAttribute('cy', y);
+					_e.setAttribute('r', size);
+					_e.setAttribute('fill', color);
+					SNAKE_ARENA.insertBefore(_e, SNAKE.head.element);
+					return _e;
+				})();
+				this.arena = arena;
+				[this.x2, this.y2] = [x + (CONFIG.SNAKE_BONUS_FOOD.size - 1), y + (CONFIG.SNAKE_BONUS_FOOD.size - 1)];
+			}
+		}
+		get x() {
+			return parseInt(this.element.getAttribute('cx'));
+		}
+		set x(value) {
+			this.element.setAttribute('cx', Math.floor(value));
+		}
+		get y() {
+			return parseInt(this.element.getAttribute('cy'));
+		}
+		set y(value) {
+			this.element.setAttribute('cy', Math.floor(value));
+		}
+		/**
+		 * @returns {Promise} resolved with an object containing x & y co-ordinates of the next bonus food 
+		 */
+		static getNextFoodPosition() {
+			function getRandomX() {
+				return Math.floor(Math.random() * (CONFIG.SNAKE_BONUS_FOOD.limits.x - CONFIG.SNAKE_BONUS_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
+			}
+			function getRandomY() {
+				return Math.floor(Math.random() * (CONFIG.SNAKE_BONUS_FOOD.limits.y - CONFIG.SNAKE_BONUS_FOOD.size)) + CONFIG_ARENA.borderWidth + 1;
+			}
+			return new Promise(function (resolve, reject) {
+				let [_x, _y] = [getRandomX(), getRandomY()];
+				let interval;
+				interval = setInterval(function (multipleOf, res, rej) {
+					try {
+						if (_x % multipleOf === 0 && _y % multipleOf === 0) {
+							WINDOW.clearInterval(interval);
+							res({
+								x: _x + 2, y: _y + 2
+							});
+						} else {
+							[_x, _y] = [getRandomX(), getRandomY()];
+						}
+					} catch (e) {
+						reject(e);
+					}
+
+				}, 0, CONFIG.SNAKE.width, resolve, reject);
+			});
+		}
+		drop() {
+			if (!(SNAKE_BONUS_FOOD instanceof SnakeFoodBonus)) {
+				return;
+			}
+			SnakeFoodBonus.getNextFoodPosition().then(
+				function (newPosition) {
+					SNAKE_BONUS_FOOD.x = newPosition.x;
+					SNAKE_BONUS_FOOD.y = newPosition.y;
+					// start timer to hide bonus food
+					setTimeout(SNAKE_BONUS_FOOD.hide, CONFIG.SNAKE_BONUS_FOOD.duration * 1000);
+				}
+			);
+		}
+		hide() {
+			SNAKE_BONUS_FOOD.x = -100;
+			SNAKE_BONUS_FOOD.y = -100;
 		}
 	}
 	let SNAKE = (function () {
@@ -729,7 +889,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 			return new Promise(function (resolve, reject) {
 				SnakeFood.getNextFoodPosition()
 					.then(
-						foodPosition => {
+						function (foodPosition) {
 							resolve(new SnakeFood(
 								SNAKE.arena,
 								foodPosition.x,
@@ -737,7 +897,7 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 								CONFIG.SNAKE_FOOD.color,
 								CONFIG.SNAKE_FOOD.size
 							));
-						}, error => {
+						}, function (error) {
 							reject(error);
 						}
 					);
@@ -749,34 +909,50 @@ const PLAY_SNAKE = (config = { 'arenaHeight': 500, 'arenaWidth': 500 }) => {
 					if (theFood instanceof SnakeFood) {
 						return resolve(theFood);
 					}
-					initSnakeFood()
-						.then(
-							snakeFood => {
-								theFood = snakeFood;
-								LOGGER.log('snake food created');
-								setTimeout(resolve, CONFIG.SNAKE_FOOD.startAfter * 1000, theFood);
-								resolve(theFood);
-							},
-							err => {
-								LOGGER.error(err);
-							}
-						);
+					initSnakeFood().then(
+						function (snakeFood) {
+							theFood = snakeFood;
+							// set timer to drop food pellet
+							setTimeout(resolve, CONFIG.SNAKE_FOOD.startAfter * 1000, theFood);
+							resolve(theFood);
+						},
+						function (err) {
+							LOGGER.error(err);
+						}
+					);
 				} catch (e) {
 					reject(e);
 				}
 			})
 		};
 	})();
-	let SNAKE_FOOD_BONUS = (function () {
+	let SNAKE_BONUS_FOOD = (function () {
 		let theBonusFood;
 		function initBonusFood() {
-			return new Promise(function name(params) {
-
+			return new Promise(function (resolve, reject) {
+				SnakeFoodBonus.getNextFoodPosition().then(
+					function (bonusFoodPosition) {
+						resolve(new SnakeFoodBonus(SNAKE.arena, bonusFoodPosition.x, bonusFoodPosition.y));
+					},
+					function (error) { }
+				);
 			});
 		}
 		return {
 			get: () => new Promise(function (resolve, reject) {
-
+				try {
+					if (theBonusFood instanceof SnakeFoodBonus) {
+						return resolve(theBonusFood);
+					}
+					initBonusFood().then(
+						function (food) {
+							theBonusFood = food;
+							resolve(theBonusFood);
+						}
+					);
+				} catch (e) {
+					reject(e);
+				}
 			})
 		};
 	})();
