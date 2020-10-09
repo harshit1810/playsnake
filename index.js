@@ -472,8 +472,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                     id: Date.now(),
                     direction: event.keyCode,
                     position: {
-                        x: UTILS.getSnake().head.x,
-                        y: UTILS.getSnake().head.y
+                        x: this.getSnake().head.x,
+                        y: this.getSnake().head.y
                     }
                 });
             });
@@ -481,7 +481,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
         increaseSnakeSpeed() {
             UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-            startSnake(CONFIG.SNAKE.speed - UTILS.getSnake().length * 50);
+            startSnake(CONFIG.SNAKE.speed - this.getSnake().length * 50);
         }
     }
 

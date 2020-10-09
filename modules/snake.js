@@ -100,16 +100,16 @@ export default function (config, utils, gameInstance) {
             return false;
         }
         move(xvalue, yvalue) {
-            let _part = this.head;
+            const _part = this.head;
             let [_part_x_pos, _part_y_pos] = [_part.x, _part.y];
             let { x: nextX, y: nextY } = utils.checkBoundaryPosition(_part.direction, {
                 'x': _part_x_pos + xvalue,
                 'y': _part_y_pos + yvalue
             });
-            const isGoingToEatSelf = this.isEatingItself();
+            const isGoingToEatSelf = this.isDevouringSelf();
             if (isGoingToEatSelf) {
                 utils.LOGGER.warn('You ate yourself');
-                stopTheGame();
+                gameInstance.stopTheGame();
                 return;
             }
             _part.x = nextX;
@@ -131,8 +131,8 @@ export default function (config, utils, gameInstance) {
         /**
          * @returns {boolean} indicates wether the snake is going to eat itself
          */
-        isEatingItself() {
-            let isGoingToEat = false;
+        isDevouringSelf() {
+            let isDevouring = false;
             let nextPart = this.head.next;
             let snakeDirection = this.head.direction;
             while (nextPart !== null) {
@@ -141,40 +141,37 @@ export default function (config, utils, gameInstance) {
                     switch (snakeDirection) {
                         case 37:
                             if (this.head.y === nextPart.y && this.head.x > nextPart.x && this.head.x <= nextPart.x2) {
-                                isGoingToEat = true;
+                                isDevouring = true;
                             }
                             break;
                         case 38:
                             if (this.head.x === nextPart.x && this.head.y > nextPart.y && this.head.y <= nextPart.y2) {
-                                isGoingToEat = true;
+                                isDevouring = true;
                             }
                             break;
                         case 39:
                             if (this.head.y === nextPart.y && this.head.x2 < nextPart.x2 && this.head.x2 >= nextPart.x) {
-                                isGoingToEat = true;
+                                isDevouring = true;
                             }
                             break;
                         case 40:
                             if (this.head.x === nextPart.x && this.head.y2 < nextPart.y2 && this.head.y2 >= nextPart.y) {
-                                isGoingToEat = true;
+                                isDevouring = true;
                             }
                             break;
                     }
-                    if (isGoingToEat) {
+                    if (isDevouring) {
                         break;
                     }
                 }
                 nextPart = nextPart.next;
             }
-            if (isGoingToEat) {
-                return true;
-            }
-            return false;
+            return isDevouring;
         }
     };
 
     function createSnakePart(arena, x, y, dirx, partNumber, color, snake) {
-        
+
         const id = `${snakeId}-part${partNumber}`;
         let direction = dirx;
         const fill = color;
@@ -194,17 +191,14 @@ export default function (config, utils, gameInstance) {
             },
             parent: arena
         });
-        // const color = color;
         let next = null;
         let prev = null;
 
         return {
-            get next() {
-                return next;
-            },
-            get prev() {
-                return prev;
-            },
+            id,
+            element,
+            get next() { return next; },
+            get prev() { return prev; },
             set next(element) {
                 next = element;
             },
@@ -233,7 +227,7 @@ export default function (config, utils, gameInstance) {
                 return this.y + (snakeWidth - 1);
             },
             isTail() {
-                return id === snake.tail.id;
+                return id === utils.getSnake().tail.id;
             },
             /**
              * method calculates the next coordinates for a part on each step
