@@ -185,6 +185,39 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             return element;
         },
         getGameEvents: function () { return gameEvents; },
+        /**
+         * returns new coordinates if the snake part is going out of bounds.
+         * 
+         * @param {number} direction the current direction of the snake part.
+         * @param {object} position coordinates of the next step.
+         */
+        checkBoundaryPosition(direction, position) {
+            const { borderWidth, limits } = this.getArenaConfig();
+            const snakeWidth = CONFIG.SNAKE.width;
+            switch (direction) {
+                case 37:
+                    if (position.x < borderWidth) {
+                        position.x = limits.x - snakeWidth;
+                    }
+                    break;
+                case 38:
+                    if (position.y < borderWidth) {
+                        position.y = limits.y - snakeWidth;
+                    }
+                    break;
+                case 39:
+                    if (position.x + snakeWidth > limits.x) {
+                        position.x = borderWidth;
+                    }
+                    break;
+                case 40:
+                    if (position.y + snakeWidth > limits.y) {
+                        position.y = borderWidth;
+                    }
+                    break;
+            }
+            return position;
+        },
         LOGGER: {
             log: console.log,
             error: console.error,
@@ -416,13 +449,6 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             this._snakeBonusFood = null;
             UTILS.getWindow().alert('GAME OVER\nYou Scored ' + SCORE_BOARD.innerHTML + ' points.');
         }
-
-        // async resume() {
-        //     const bonusFoodIntervalId = this.getSnakeBonusFood().startBonusFood();
-        //     this.intervals.push(bonusFoodIntervalId);
-        //     this.intervals.push(this.getSnake().startSnake());
-        //     LOGGER.log('game resumed');
-        // }
 
         setButtonListeners() {
             UTILS.getWindow().addEventListener('unload', this.stop);
