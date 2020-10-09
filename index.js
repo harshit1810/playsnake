@@ -1,6 +1,8 @@
+import GameEventHandlerModule from './modules/game-event-handler';
 import SnakeFoodModule from './modules/snake-food';
 import SnakeBonusFoodModule from './modules/snake-bonus-food';
 import SnakeModule from './modules/snake';
+import InitUIModule from './modules/init-ui';
 
 const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
@@ -18,6 +20,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             parseInt(String(ARENA_WIDTH).trim()),
             parseInt(String(ARENA_HEIGHT).trim())
         ];
+
+    const gameEvents = GameEventHandlerModule();
 
     const CONFIG_ARENA = {
         'id': 'play-snake-arena',
@@ -47,30 +51,14 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         'pauseButton': {
             'id': 'pause-play-snake',
             'text': 'Pause',
-            'order': '0',
-            'clickHandler': function (event) {
-                game.stop();
-                PAUSE_BUTTON.setAttribute('disabled', 'true');
-                if (PLAY_BUTTON.hasAttribute('disabled')) {
-                    PLAY_BUTTON.removeAttribute('disabled');
-                }
-            }
+            'order': '0'
         },
         'resumeButton': {
             'id': 'resume-play-snake',
             'text': 'Resume',
-            'order': '1',
-            'clickHandler': function (event) {
-                game.resume()
-                PLAY_BUTTON.setAttribute('disabled', 'true');
-                if (PAUSE_BUTTON.hasAttribute('disabled')) {
-                    PAUSE_BUTTON.removeAttribute('disabled');
-                }
-            }
+            'order': '1'
         }
     };
-
-
 
     class Subject {
         constructor(topic, observers = []) {
@@ -196,6 +184,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
             return element;
         },
+        getGameEvents: function () { return gameEvents; },
         LOGGER: {
             log: console.log,
             error: console.error,
@@ -203,137 +192,11 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
     };
 
-    const { SNAKE_ARENA, PLAY_BUTTON, PAUSE_BUTTON, SCORE_BOARD } = (function init() {
-        try {
-            UTILS.getDocumentBody().style.fontFamily = 'Candara';
-            const gameControlDiv = UTILS.createHTMLElement({
-                elementType: 'div',
-                attributes: {
-                    style: UTILS.getStyleString({
-                        display: 'flex',
-                        'flex-direction': 'row',
-                        'flex-wrap': 'nowrap',
-                        width: UTILS.pixelify(CONFIG_ARENA.width),
-                        padding: '1% 0%'
-                    })
-                }
-            });
-
-            const styleString = UTILS.getStyleString({
-                padding: '2% 2%',
-                'border-radius': '5px',
-                flex: '0 1 20%',
-                'text-align': 'center',
-                'align-self': 'flex-end'
-            });
-
-            const pauseBtn = UTILS.createHTMLElement({
-                elementType: 'button',
-                parent: gameControlDiv,
-                innerHTML: CONFIG_ARENA.pauseButton.text,
-                attributes: {
-                    id: CONFIG_ARENA.pauseButton.id,
-                    style: `${styleString} order: ${CONFIG_ARENA.pauseButton.order}`
-                },
-                eventListeners: {
-                    click: CONFIG_ARENA.pauseButton.clickHandler
-                }
-            });
-
-            const playBtn = UTILS.createHTMLElement({
-                elementType: 'button',
-                parent: gameControlDiv,
-                innerHTML: CONFIG_ARENA.resumeButton.text,
-                attributes: {
-                    id: CONFIG_ARENA.resumeButton.id,
-                    style: `${styleString} margin-left: 2%; order: ${CONFIG_ARENA.resumeButton.order}`
-                },
-                eventListeners: {
-                    click: CONFIG_ARENA.resumeButton.clickHandler
-                }
-            });
-
-            const arenaContainer = UTILS.createHTMLElement({
-                elementType: 'div',
-                attributes: {
-                    id: 'arena-container',
-                    style: UTILS.getStyleString({
-                        display: 'flex',
-                        'flex-direction': 'cols',
-                        'flex-wrap': 'wrap',
-                    })
-                }
-            });
-            const canvas = UTILS.createHTMLElement({
-                elementNamespace: UTILS.getSvgNamespace(),
-                elementType: 'svg',
-                attributes: {
-                    id: CONFIG_ARENA.id,
-                    height: CONFIG_ARENA.height,
-                    width: CONFIG_ARENA.width,
-                    style: `border: ${UTILS.pixelify(CONFIG_ARENA.borderWidth)} solid ${CONFIG_ARENA.borderColor}`
-                },
-                parent: arenaContainer
-            });
-
-            const legendContainer = UTILS.createHTMLElement({
-                elementType: 'div',
-                parent: arenaContainer,
-                attributes: {
-                    id: 'legend-container',
-                    style: UTILS.getStyleString({
-                        padding: '2px 2px'
-                    })
-                }
-            });
-            UTILS.createHTMLElement({
-                parent: legendContainer,
-                elementType: 'div',
-                innerHTML: 'Speed Powerup'
-            });
-            UTILS.createHTMLElement({
-                parent: legendContainer,
-                elementType: 'div',
-                innerHTML: 'Bonus 10 points'
-            });
-            UTILS.createHTMLElement({
-                parent: legendContainer,
-                elementType: 'div',
-                innerHTML: '5 points'
-            });
-
-            const scoreContainer = UTILS.createHTMLElement({
-                elementType: 'div',
-                innerHTML: 'Your Score: '
-            });
-            const scoreSpan = UTILS.createHTMLElement({
-                elementType: 'span',
-                parent: scoreContainer,
-                attributes: {
-                    id: 'score',
-                    style: UTILS.getStyleString({
-                        'font-weight': 'bold'
-                    })
-                },
-                innerHTML: '0'
-            });
-
-            return {
-                SNAKE_ARENA: canvas,
-                PLAY_BUTTON: playBtn,
-                PAUSE_BUTTON: pauseBtn,
-                SCORE_BOARD: scoreSpan
-            };
-        } catch (e) {
-            UTILS.LOGGER.error(e);
-        }
-    })();
-
+    const { SNAKE_ARENA, PLAY_BUTTON, PAUSE_BUTTON, SCORE_BOARD } = InitUIModule(UTILS);
     if (!SNAKE_ARENA) {
         return UTILS.showAlert('Sorry. Unable to start the game.');
     }
 
-    let SNAKE_BONUS_FOOD;
     /**
      * configurations
      */
@@ -364,8 +227,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 'size': Math.floor(arg.snakeSize / 3),
                 'startAfter': 2,
                 'limits': {
-                    'x': CONFIG_ARENA.limits.x - arg.snakeSize,
-                    'y': CONFIG_ARENA.limits.y - arg.snakeSize
+                    'x': UTILS.getArenaConfig().limits.x - arg.snakeSize,
+                    'y': UTILS.getArenaConfig().limits.y - arg.snakeSize
                 },
                 'points': arg.foodPoints
             },
@@ -376,8 +239,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 'size': arg.snakeSize,
                 'startAfter': 30,
                 'limits': {
-                    'x': CONFIG_ARENA.limits.x - (arg.snakeSize * 2),
-                    'y': CONFIG_ARENA.limits.y - (arg.snakeSize * 2)
+                    'x': UTILS.getArenaConfig().limits.x - (arg.snakeSize * 2),
+                    'y': UTILS.getArenaConfig().limits.y - (arg.snakeSize * 2)
                 },
                 'points': arg.bonusFoodPoints,
                 'duration': 10
@@ -525,7 +388,23 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
 
         pause() {
+            UTILS.getWindow().clearInterval(this.getSnake().intervalId);
+            UTILS.getWindow().clearInterval(this.getSnakeBonusFood().intervalId);
+            PAUSE_BUTTON.setAttribute('disabled', 'true');
+            if (PLAY_BUTTON.hasAttribute('disabled')) {
+                PLAY_BUTTON.removeAttribute('disabled');
+            }
+            UTILS.LOGGER.log('game paused');
+        }
 
+        resume() {
+            this.getSnake().startSnake();
+            this.getSnakeBonusFood().startBonusFood();
+            PLAY_BUTTON.setAttribute('disabled', 'true');
+            if (PAUSE_BUTTON.hasAttribute('disabled')) {
+                PAUSE_BUTTON.removeAttribute('disabled');
+            }
+            UTILS.LOGGER.log('game resumed');
         }
 
         async stop() {
@@ -538,26 +417,26 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             UTILS.getWindow().alert('GAME OVER\nYou Scored ' + SCORE_BOARD.innerHTML + ' points.');
         }
 
-        async resume() {
-            const bonusFoodIntervalId = this.getSnakeBonusFood().startBonusFood();
-            this.intervals.push(bonusFoodIntervalId);
-            this.intervals.push(this.getSnake().startSnake());
-            LOGGER.log('game resumed');
-        }
+        // async resume() {
+        //     const bonusFoodIntervalId = this.getSnakeBonusFood().startBonusFood();
+        //     this.intervals.push(bonusFoodIntervalId);
+        //     this.intervals.push(this.getSnake().startSnake());
+        //     LOGGER.log('game resumed');
+        // }
 
         setButtonListeners() {
             UTILS.getWindow().addEventListener('unload', this.stop);
             UTILS.getDocument().addEventListener('keydown', event => {
                 /** listen only for direction keys */
-                if (CONFIG_ARENA.supportedKeys.indexOf(event.keyCode) === -1) {
+                if (UTILS.getArenaConfig().supportedKeys.indexOf(event.keyCode) === -1) {
                     return;
                 }
                 /**
                  * the new direction should not be the current direction 
                  * or the opposite direction.
                  */
-                if (SNAKE_DIRECTION == event.keyCode &&
-                    event.keyCode == CONFIG_ARENA.keyConfig[String(SNAKE_DIRECTION)].reverse) {
+                if (SNAKE_DIRECTION == event.keyCode ||
+                    event.keyCode == UTILS.getArenaConfig().keyConfig[String(SNAKE_DIRECTION)].reverse) {
                     return;
                 }
                 SNAKE_DIRECTION = event.keyCode;
@@ -581,7 +460,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
     }
 
     const game = new PlaySnakeGame(SNAKE_ARENA);
-
+    gameEvents.init(game);
     game.start();
 };
 
