@@ -402,12 +402,12 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
 
         getSnake() {
-            if (this._snake instanceof Snake) {
+            if (this._snake) {
                 return this._snake;
             }
             const { direction, position: { x, y } } = COMMAND_STACK.getFirst();
             this.snakeDirection = direction;
-            this._snake = new Snake(
+            this._snake = Snake(
                 this.arena,
                 x,
                 y,
@@ -484,12 +484,13 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
 
         stop() {
-            this._snake = null;
             UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-            const { intervalId: bonusFoodInterval } = this.getSnakeBonusFood();
-            UTILS.getWindow().clearInterval(bonusFoodInterval);
+            UTILS.getWindow().clearInterval(this.getSnakeBonusFood().intervalId);
+            UTILS.getWindow().clearInterval(this.getSpeedBonusFood().intervalId);
+            this._snake = null;
             this._snakeFood = null;
             this._snakeBonusFood = null;
+            this._speedBonus = null;
             this._speedBonus = null;
             UTILS.getWindow().alert('GAME OVER\nYou Scored ' + this.getScore() + ' points.');
         }

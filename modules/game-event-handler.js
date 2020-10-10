@@ -1,5 +1,3 @@
-import game from "./game";
-
 export default function () {
     let gameInstance;
     let events = {
@@ -29,6 +27,11 @@ export default function () {
         USE_SPEED_BONUS: [
             () => {
                 gameInstance.increaseSnakeSpeed();
+            }
+        ],
+        DEVOURED_SELF: [
+            () => {
+                gameInstance.stop();
             }
         ]
     };
