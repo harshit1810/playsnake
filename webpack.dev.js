@@ -31,7 +31,7 @@ module.exports = {
         ]
     },
     output: {
-        filename: 'playsnake.dev.min.js',
+        filename: 'playsnake.min.js',
         path: path.resolve(__dirname, 'docs')
     }
 };
