@@ -16,9 +16,9 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         ARENA_WIDTH,
         ARENA_HEIGHT
     ] = [
-            parseInt(String(ARENA_WIDTH).trim()),
-            parseInt(String(ARENA_HEIGHT).trim())
-        ];
+        parseInt(String(ARENA_WIDTH).trim()),
+        parseInt(String(ARENA_HEIGHT).trim())
+    ];
 
     const gameEvents = GameEventHandlerModule();
 
@@ -191,7 +191,9 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
             return element;
         },
-        getGameEvents: function () { return gameEvents; },
+        getGameEvents: function () {
+            return gameEvents; 
+        },
         /**
          * returns new coordinates if the snake part is going out of bounds.
          * 
@@ -202,32 +204,35 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             const { borderWidth, limits } = this.getArenaConfig();
             const snakeWidth = CONFIG.SNAKE.width;
             switch (direction) {
-                case 37:
-                    if (position.x < borderWidth) {
-                        position.x = limits.x - snakeWidth;
-                    }
-                    break;
-                case 38:
-                    if (position.y < borderWidth) {
-                        position.y = limits.y - snakeWidth;
-                    }
-                    break;
-                case 39:
-                    if (position.x + snakeWidth > limits.x) {
-                        position.x = borderWidth;
-                    }
-                    break;
-                case 40:
-                    if (position.y + snakeWidth > limits.y) {
-                        position.y = borderWidth;
-                    }
-                    break;
+            case 37:
+                if (position.x < borderWidth) {
+                    position.x = limits.x - snakeWidth;
+                }
+                break;
+            case 38:
+                if (position.y < borderWidth) {
+                    position.y = limits.y - snakeWidth;
+                }
+                break;
+            case 39:
+                if (position.x + snakeWidth > limits.x) {
+                    position.x = borderWidth;
+                }
+                break;
+            case 40:
+                if (position.y + snakeWidth > limits.y) {
+                    position.y = borderWidth;
+                }
+                break;
             }
             return position;
         },
         LOGGER: {
+            // eslint-disable-next-line no-console
             log: console.log,
+            // eslint-disable-next-line no-console
             error: console.error,
+            // eslint-disable-next-line no-console
             warn: console.warn
         }
     };

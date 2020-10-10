@@ -1,6 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-//const CleanWebpackPlugin = require('clean-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = {
     mode: 'development',
@@ -9,12 +9,17 @@ module.exports = {
     plugins: [
         new HtmlWebpackPlugin({
             title: 'PlaySnake'
+        }),
+        new ESLintPlugin({
+            fix: true,
+            failOnError: false,
+            files: ['index.js', './modules/*.js']
         })
     ],
     module: {
         rules: [
             {
-                test: /^index.js$/,
+                test: /\.js$/,
                 exclude: '/node_modules|dist|docs|webpack*/',
                 use: {
                     loader: 'babel-loader',
@@ -26,7 +31,7 @@ module.exports = {
         ]
     },
     output: {
-        filename: 'playsnake.webpack.min.js',
+        filename: 'playsnake.dev.min.js',
         path: path.resolve(__dirname, 'docs')
     }
 };

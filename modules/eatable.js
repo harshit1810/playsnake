@@ -46,19 +46,45 @@ export default function (config, utils) {
         let intervalId; // used if this eatable is interval based
 
         return {
-            get isIntervalBased() { return isIntervalBased; },
-            get element() { return element; },
-            get arena() { return arena; },
-            get limits() { return limits; },
-            get intervalId() { return intervalId; },
-            set intervalId(i) { intervalId = i; },
-            get startAfter() { return startAfter; },
-            get size() { return size; },
-            get x2() { return x2; },
-            set x2(v) { x2 = v; },
-            get y2() { return y2; },
-            set y2(v) { y2 = v; },
-            get points() { return parseInt(points); },
+            get isIntervalBased() {
+                return isIntervalBased; 
+            },
+            get element() {
+                return element; 
+            },
+            get arena() {
+                return arena; 
+            },
+            get limits() {
+                return limits; 
+            },
+            get intervalId() {
+                return intervalId; 
+            },
+            set intervalId(i) {
+                intervalId = i; 
+            },
+            get startAfter() {
+                return startAfter; 
+            },
+            get size() {
+                return size; 
+            },
+            get x2() {
+                return x2; 
+            },
+            set x2(v) {
+                x2 = v; 
+            },
+            get y2() {
+                return y2; 
+            },
+            set y2(v) {
+                y2 = v; 
+            },
+            get points() {
+                return parseInt(points); 
+            },
             get x() {
                 return parseInt(this.element.getAttribute('cx'));
             },
@@ -76,7 +102,9 @@ export default function (config, utils) {
                     return;
                 }
                 this.intervalId = setInterval(
-                    () => { this.drop(); },
+                    () => {
+                        this.drop(); 
+                    },
                     this.startAfter * 1000
                 );
                 return this.intervalId;

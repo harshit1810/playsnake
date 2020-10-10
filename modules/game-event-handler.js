@@ -30,7 +30,8 @@ export default function () {
 
     function emitEvent(eventName, data) {
         if (!events.hasOwnProperty(eventName)) {
-            return console.warn(`Invalid event triggered : ${eventName}`);
+            // console.warn(`Invalid event triggered : ${eventName}`);
+            return;
         }
         events[eventName].forEach(cb => cb(data));
     }

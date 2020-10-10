@@ -169,26 +169,26 @@ export default function (config, utils) {
                 // check for tail node and nodes which are traveliing in different direction than the head
                 if (nextPart.direction !== snakeDirection || nextPart.id === this.tail.id) {
                     switch (snakeDirection) {
-                        case 37:
-                            if (this.head.y === nextPart.y && this.head.x > nextPart.x && this.head.x <= nextPart.x2) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 38:
-                            if (this.head.x === nextPart.x && this.head.y > nextPart.y && this.head.y <= nextPart.y2) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 39:
-                            if (this.head.y === nextPart.y && this.head.x2 < nextPart.x2 && this.head.x2 >= nextPart.x) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 40:
-                            if (this.head.x === nextPart.x && this.head.y2 < nextPart.y2 && this.head.y2 >= nextPart.y) {
-                                isDevouring = true;
-                            }
-                            break;
+                    case 37:
+                        if (this.head.y === nextPart.y && this.head.x > nextPart.x && this.head.x <= nextPart.x2) {
+                            isDevouring = true;
+                        }
+                        break;
+                    case 38:
+                        if (this.head.x === nextPart.x && this.head.y > nextPart.y && this.head.y <= nextPart.y2) {
+                            isDevouring = true;
+                        }
+                        break;
+                    case 39:
+                        if (this.head.y === nextPart.y && this.head.x2 < nextPart.x2 && this.head.x2 >= nextPart.x) {
+                            isDevouring = true;
+                        }
+                        break;
+                    case 40:
+                        if (this.head.x === nextPart.x && this.head.y2 < nextPart.y2 && this.head.y2 >= nextPart.y) {
+                            isDevouring = true;
+                        }
+                        break;
                     }
                     if (isDevouring) {
                         break;
@@ -202,18 +202,18 @@ export default function (config, utils) {
             const { x, y, direction } = this.tail;
             let [_x, _y] = [Number(x), Number(y)];
             switch (direction) {
-                case 37:
-                    _x = x + snakeWidth;
-                    break;
-                case 38:
-                    _y = y + snakeWidth;
-                    break;
-                case 39:
-                    _x = x - snakeWidth;
-                    break;
-                case 40:
-                    _y = y - snakeWidth;
-                    break;
+            case 37:
+                _x = x + snakeWidth;
+                break;
+            case 38:
+                _y = y + snakeWidth;
+                break;
+            case 39:
+                _x = x - snakeWidth;
+                break;
+            case 40:
+                _y = y - snakeWidth;
+                break;
             }
             return { x: _x, y: _y };
         }
@@ -246,10 +246,18 @@ export default function (config, utils) {
             id,
             element,
             color,
-            get direction() { return direction; },
-            set direction(d) { direction = d; },
-            get next() { return next; },
-            get prev() { return prev; },
+            get direction() {
+                return direction; 
+            },
+            set direction(d) {
+                direction = d; 
+            },
+            get next() {
+                return next; 
+            },
+            get prev() {
+                return prev; 
+            },
             set next(element) {
                 next = element;
             },
@@ -290,18 +298,18 @@ export default function (config, utils) {
                 };
                 // get coordinates for next step in the same direction
                 switch (this.direction) {
-                    case 37:
-                        nextPosition.x -= snakeStep;
-                        break;
-                    case 38:
-                        nextPosition.y -= snakeStep;
-                        break;
-                    case 39:
-                        nextPosition.x += snakeStep;
-                        break;
-                    case 40:
-                        nextPosition.y += snakeStep;
-                        break;
+                case 37:
+                    nextPosition.x -= snakeStep;
+                    break;
+                case 38:
+                    nextPosition.y -= snakeStep;
+                    break;
+                case 39:
+                    nextPosition.x += snakeStep;
+                    break;
+                case 40:
+                    nextPosition.y += snakeStep;
+                    break;
                 }
                 nextPosition = utils.checkBoundaryPosition(this.direction, nextPosition);
                 // change current position to the calculated next position
