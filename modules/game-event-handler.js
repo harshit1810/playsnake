@@ -33,12 +33,18 @@ export default function () {
             () => {
                 gameInstance.stop();
             }
+        ],
+        SNAKE_DIRECTION_CHANGE: [
+            ({ direction }) => {
+                gameInstance.handleSnakeDirectionChange(parseInt(direction));
+            }
         ]
     };
 
     function emitEvent(eventName, data) {
         if (!events.hasOwnProperty(eventName)) {
-            // console.warn(`Invalid event triggered : ${eventName}`);
+            // eslint-disable-next-line no-console
+            console.warn(`Invalid event triggered : ${eventName}`);
             return;
         }
         events[eventName].forEach(cb => cb(data));
@@ -47,7 +53,6 @@ export default function () {
     return {
         init: function (game) {
             gameInstance = game;
-            return game;
         },
         emit: emitEvent,
         listen: function (eventName, cb) {

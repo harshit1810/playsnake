@@ -5,7 +5,6 @@ export default function (config, utils) {
         width: snakeWidth,
         step: snakeStep,
         id: snakeId,
-        directionMap,
     } = config.SNAKE;
 
     const {
@@ -94,7 +93,7 @@ export default function (config, utils) {
                 this.head.direction = newDirection;
             },
             start: function() {
-                this[directionMap[String(this.head.direction)]]();
+                this[utils.getArenaConfig().directionMap[String(this.head.direction)]]();
             },
             getPositionOfNewPart: function() {
                 const { x, y, direction } = this.tail;

@@ -12,39 +12,45 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         DEFAULT: 'Sorry.',
         START_GAME: 'Sorry. Unable To Start The Game'
     };
-    [
+    ([
         ARENA_WIDTH,
         ARENA_HEIGHT
     ] = [
         parseInt(String(ARENA_WIDTH).trim()),
         parseInt(String(ARENA_HEIGHT).trim())
-    ];
+    ]);
 
     const gameEvents = GameEventHandlerModule();
 
     const CONFIG_ARENA = {
-        'id': 'play-snake-arena',
-        'width': ARENA_WIDTH,
-        'height': ARENA_HEIGHT,
-        'borderColor': 'black',
-        'borderWidth': 1,
-        'limits': {
-            'x': ARENA_WIDTH - 1,
-            'y': ARENA_HEIGHT - 1
+        id: 'play-snake-arena',
+        width: ARENA_WIDTH,
+        height: ARENA_HEIGHT,
+        borderColor: 'black',
+        borderWidth: 1,
+        limits: {
+            x: ARENA_WIDTH - 1,
+            y: ARENA_HEIGHT - 1
         },
-        'supportedKeys': [37, 38, 39, 40],
-        'keyConfig': {
-            '37': {
-                'reverse': 39
+        supportedKeys: [37, 38, 39, 40],
+        directionMap: {
+            37: 'LEFT',
+            38: 'UP',
+            39: 'RIGHT',
+            40: 'DOWN'
+        },
+        keyConfig: {
+            37: {
+                reverse: 39
             },
-            '38': {
-                'reverse': 40
+            38: {
+                reverse: 40
             },
-            '39': {
-                'reverse': 37
+            39: {
+                reverse: 37
             },
-            '40': {
-                'reverse': 38
+            40: {
+                reverse: 38
             }
         },
         'pauseButton': {
@@ -192,7 +198,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             return element;
         },
         getGameEvents: function () {
-            return gameEvents; 
+            return gameEvents;
         },
         /**
          * returns new coordinates if the snake part is going out of bounds.
@@ -254,12 +260,6 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 color: arg.primaryColor,
                 length: arg.snakeLength,
                 speed: arg.snakeSpeed,
-                directionMap: {
-                    '37': 'LEFT',
-                    '38': 'UP',
-                    '39': 'RIGHT',
-                    '40': 'DOWN'
-                },
                 step: 1
             },
             SNAKE_PART: {
@@ -330,7 +330,6 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         speedBonusStartAfter: 30,
         speedBonusDuration: 10
     });
-    let SNAKE_DIRECTION = 39;
 
     /**
      * store the directions given to the snake
@@ -378,7 +377,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         };
     })({
         id: Date.now(),
-        direction: SNAKE_DIRECTION,
+        direction: CONFIG_ARENA.supportedKeys[2],
         position: {
             x: CONFIG.ARENA.center.x,
             y: CONFIG.ARENA.center.y
@@ -475,7 +474,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
         resume() {
             this.getSnake().startSnake();
-            this.getSnakeBonusFood().startBonusFood();
+            this.getSnakeBonusFood().startInterval();
             PLAY_BUTTON.setAttribute('disabled', 'true');
             if (PAUSE_BUTTON.hasAttribute('disabled')) {
                 PAUSE_BUTTON.removeAttribute('disabled');
@@ -495,6 +494,26 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             UTILS.getWindow().alert('GAME OVER\nYou Scored ' + this.getScore() + ' points.');
         }
 
+        /**
+         * 
+         * @param {number} direction the new direction received
+         */
+        handleSnakeDirectionChange(direction) {
+            if (UTILS.getArenaConfig().supportedKeys.indexOf(direction) === -1) {
+                return UTILS.LOGGER.log('Invalid direction');
+            }
+            this.snakeDirection = event.keyCode;
+            this.getSnake().currentDirection = this.snakeDirection;
+            COMMAND_STACK.add({
+                id: Date.now(),
+                direction: event.keyCode,
+                position: {
+                    x: this.getSnake().head.x,
+                    y: this.getSnake().head.y
+                }
+            });
+        }
+
         setButtonListeners() {
             UTILS.getWindow().addEventListener('unload', this.stop);
             UTILS.getDocument().addEventListener('keydown', event => {
@@ -506,21 +525,11 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                  * the new direction should not be the current direction 
                  * or the opposite direction.
                  */
-                if (SNAKE_DIRECTION == event.keyCode ||
-                    event.keyCode == UTILS.getArenaConfig().keyConfig[String(SNAKE_DIRECTION)].reverse) {
+                if (this.getSnake().currentDirection == event.keyCode ||
+                    event.keyCode == UTILS.getArenaConfig().keyConfig[String(this.getSnake().currentDirection)].reverse) {
                     return;
                 }
-                SNAKE_DIRECTION = event.keyCode;
-                this.snakeDirection = event.keyCode;
-                this.getSnake().currentDirection = this.snakeDirection;
-                COMMAND_STACK.add({
-                    id: Date.now(),
-                    direction: event.keyCode,
-                    position: {
-                        x: this.getSnake().head.x,
-                        y: this.getSnake().head.y
-                    }
-                });
+                UTILS.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: event.keyCode });
             });
         }
 
