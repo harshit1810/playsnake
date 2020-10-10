@@ -17,3 +17,6 @@ https://harshit1810.github.io/playsnake/index.html
 - [x] implement bonus food
 - [x] implement snake movement transition
 - [x] game over when snake eats itself
+- [ ] killer snake
+- [ ] score reducing food
+- [ ] food which makes snake go through all objects
