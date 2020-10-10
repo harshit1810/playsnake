@@ -11,7 +11,7 @@ https://harshit1810.github.io/playsnake/index.html
 
 # Todos
 
-- [ ] increase speed on eating food
+- [x] increase speed on eating food
 - [ ] implement maze
 - [x] implement game pause / play
 - [x] implement bonus food
