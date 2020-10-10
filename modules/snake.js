@@ -1,8 +1,15 @@
 export default function (config, utils, gameInstance) {
 
-    const snakeWidth = config.SNAKE.width;
-    const snakeStep = config.SNAKE.step;
-    const snakeId = config.SNAKE.id;
+    const {
+        width: snakeWidth,
+        step: snakeStep,
+        id: snakeId,
+        directionMap,
+    } = config.SNAKE;
+
+    const {
+        points: snakeFoodValue
+    } = config.SNAKE_FOOD;
 
     class Snake {
         constructor(arena, startX, startY, direction, speed, color = config.SNAKE.color) {
@@ -12,21 +19,21 @@ export default function (config, utils, gameInstance) {
             this.tail = this.head;
             this.arena = arena;
             this.speed = speed;
-            this.UP = function () {
-                this.move(0, snakeStep * -1);
-            };
-            this.DOWN = function () {
-                this.move(0, snakeStep);
-            };
-            this.RIGHT = function () {
-                this.move(snakeStep, 0);
-            };
-            this.LEFT = function () {
-                this.move(snakeStep * -1, 0);
-            };
             this.turningPoints = [];
             this.intervalId;
             this.currentDirection = direction;
+        }
+        UP() {
+            this.move(0, snakeStep * -1);
+        }
+        DOWN() {
+            this.move(0, snakeStep);
+        }
+        RIGHT() {
+            this.move(snakeStep, 0);
+        }
+        LEFT() {
+            this.move(snakeStep * -1, 0);
         }
         startSnake() {
             this.intervalId = setInterval(() => {
@@ -38,21 +45,24 @@ export default function (config, utils, gameInstance) {
         changeDirection(newDirection) {
             this.head.direction = newDirection;
         }
+        start() {
+            this[directionMap[String(this.head.direction)]]();
+        }
         /**
          * adds a snake part at the tail
          * @param {function} next a callback
          * @returns undefined
          */
         grow(next) {
-            const { x, y } = this.tail.getXYOfNextPart();
+            const { x, y } = this.getPositionOfNewPart();
+            // const newPart = new SnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
+            const newPart = createSnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
             this.length += 1;
-            // const newPart = new SnakePart(this.arena, x, y, this.tail.direction, this.length, this.tail.color);
-            const newPart = createSnakePart(this.arena, x, y, this.tail.direction, this.length, this.tail.color, this);
             this.tail.next = newPart;
             newPart.prev = this.tail;
             this.tail = newPart;
             utils.getPositionUpdater().addObserver(this.tail);
-            utils.incrementScore(config.SNAKE_FOOD.points);
+            utils.incrementScore(snakeFoodValue);
             // drop food pellet
             if (typeof next === 'function') {
                 next();
@@ -70,9 +80,6 @@ export default function (config, utils, gameInstance) {
                     _part.color = clr;
                 }, 0);
             }
-        }
-        start() {
-            this[config.SNAKE.directionMap[String(this.head.direction)]]();
         }
         isEatingFood() {
             const food = utils.getSnakeFood();
@@ -100,18 +107,17 @@ export default function (config, utils, gameInstance) {
             return false;
         }
         move(xvalue, yvalue) {
-            const _part = this.head;
-            let [_part_x_pos, _part_y_pos] = [_part.x, _part.y];
-            let { x: nextX, y: nextY } = utils.checkBoundaryPosition(_part.direction, {
-                'x': _part_x_pos + xvalue,
-                'y': _part_y_pos + yvalue
-            });
             const isGoingToEatSelf = this.isDevouringSelf();
             if (isGoingToEatSelf) {
                 utils.LOGGER.warn('You ate yourself');
-                gameInstance.stopTheGame();
+                gameInstance.stop();
                 return;
             }
+            const _part = this.head;
+            let { x: nextX, y: nextY } = utils.checkBoundaryPosition(_part.direction, {
+                'x': _part.x + xvalue,
+                'y': _part.y + yvalue
+            });
             _part.x = nextX;
             _part.y = nextY;
             const isEatingFood = this.isEatingFood();
@@ -168,13 +174,31 @@ export default function (config, utils, gameInstance) {
             }
             return isDevouring;
         }
+        getPositionOfNewPart() {
+            const { x, y, direction } = this.tail;
+            let [_x, _y] = [Number(x), Number(y)];
+            switch (direction) {
+                case 37:
+                    _x = x + snakeWidth;
+                    break;
+                case 38:
+                    _y = y + snakeWidth;
+                    break;
+                case 39:
+                    _x = x - snakeWidth;
+                    break;
+                case 40:
+                    _y = y - snakeWidth;
+                    break;
+            }
+            return { x: _x, y: _y };
+        }
     };
 
-    function createSnakePart(arena, x, y, dirx, partNumber, color, snake) {
+    function createSnakePart(arena, x, y, dirx, partNumber, color) {
 
         const id = `${snakeId}-part${partNumber}`;
         let direction = dirx;
-        const fill = color;
         const element = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
             elementType: config.SNAKE.elemType,
@@ -185,7 +209,7 @@ export default function (config, utils, gameInstance) {
                 y,
                 rx: snakeWidth,
                 ry: snakeWidth,
-                fill,
+                fill: color,
                 width: utils.pixelify(snakeWidth),
                 height: utils.pixelify(snakeWidth)
             },
@@ -197,6 +221,9 @@ export default function (config, utils, gameInstance) {
         return {
             id,
             element,
+            color,
+            get direction() { return direction; },
+            set direction(d) { direction = d; },
             get next() { return next; },
             get prev() { return prev; },
             set next(element) {
@@ -226,17 +253,19 @@ export default function (config, utils, gameInstance) {
             get y2() {
                 return this.y + (snakeWidth - 1);
             },
-            isTail() {
+            isTail: function () {
                 return id === utils.getSnake().tail.id;
             },
             /**
              * method calculates the next coordinates for a part on each step
+             * triggered for all new parts
              */
             nextXY: function () {
                 let nextPosition = {
                     'x': this.x, 'y': this.y
                 };
-                switch (direction) {
+                // get coordinates for next step in the same direction
+                switch (this.direction) {
                     case 37:
                         nextPosition.x -= snakeStep;
                         break;
@@ -251,142 +280,130 @@ export default function (config, utils, gameInstance) {
                         break;
                 }
                 nextPosition = utils.checkBoundaryPosition(this.direction, nextPosition);
+                // change current position to the calculated next position
                 this.x = nextPosition.x;
                 this.y = nextPosition.y;
-                if (utils.getDirectionCommands().hasCommands()) {
-                    let _command = utils.getDirectionCommands().getNextTurn(id);
+                const commandStack = utils.getDirectionCommands();
+                // check if player game any direction commands
+                if (commandStack.hasCommands()) {
+                    const _command = commandStack.getNextTurn(id);
+                    // change direction of this part when it reaches the position 
+                    // at which the direction command was given
                     if (_command && _command.position.x == this.x && _command.position.y == this.y) {
-                        direction = _command.direction;
+                        this.direction = _command.direction; // set new direction
                         (utils.getSnakeDirectionMap())[id] = _command.id;
+                        // remove the recorded command if the last part has followed the direction command
                         if (this.isTail()) {
-                            utils.getDirectionCommands().remove();
+                            commandStack.remove();
                         }
                     }
                 }
-            },
-            getXYOfNextPart: function () {
-                let [x, y] = [this.x, this.y];
-                switch (direction) {
-                    case 37:
-                        x += snakeWidth;
-                        break;
-                    case 38:
-                        y += snakeWidth;
-                        break;
-                    case 39:
-                        x -= snakeWidth;
-                        break;
-                    case 40:
-                        y -= snakeWidth;
-                        break;
-                }
-                return { x, y };
             }
         };
     }
 
-    class SnakePart {
-        constructor(arena, x, y, dirx, partNumber, color) {
-            this.id = `${snakeId}-part${partNumber}`;
-            this.direction = dirx;
-            this.element = utils.createHTMLElement({
-                elementNamespace: utils.getSvgNamespace(),
-                elementType: config.SNAKE.elemType,
-                attributes: {
-                    id: this.id,
-                    tabIndex: partNumber,
-                    x,
-                    y,
-                    rx: snakeWidth,
-                    ry: snakeWidth,
-                    fill: color,
-                    width: utils.pixelify(snakeWidth),
-                    height: utils.pixelify(snakeWidth)
-                },
-                parent: arena
-            });
-            this.color = color;
-            this.next = null;
-            this.prev = null;
-        }
-        isSnakeHead() {
-            return this.id === snakeId;
-        }
-        get x() {
-            return parseInt(this.element.getAttribute('x'));
-        }
-        set x(value) {
-            this.element.setAttribute('x', Math.floor(value));
-        }
-        get y() {
-            return parseInt(this.element.getAttribute('y'));
-        }
-        set y(value) {
-            this.element.setAttribute('y', Math.floor(value));
-        }
-        get x2() {
-            return this.x + (snakeWidth - 1);
-        }
-        get y2() {
-            return this.y + (snakeWidth - 1);
-        }
-        isTail() {
-            return this.id === utils.getSnake().tail.id;
-        }
-        /**
-         * method calculates the next coordinates for a part on each step
-         */
-        nextXY() {
-            let nextPosition = {
-                'x': this.x, 'y': this.y
-            }
-            switch (this.direction) {
-                case 37:
-                    nextPosition.x -= snakeStep;
-                    break;
-                case 38:
-                    nextPosition.y -= snakeStep;
-                    break;
-                case 39:
-                    nextPosition.x += snakeStep;
-                    break;
-                case 40:
-                    nextPosition.y += snakeStep;
-                    break;
-            }
-            nextPosition = utils.checkBoundaryPosition(this.direction, nextPosition);
-            this.x = nextPosition.x;
-            this.y = nextPosition.y;
-            if (utils.getDirectionCommands().hasCommands()) {
-                let _command = utils.getDirectionCommands().getNextTurn(this.id);
-                if (_command && _command.position.x == this.x && _command.position.y == this.y) {
-                    this.direction = _command.direction;
-                    (utils.getSnakeDirectionMap())[this.id] = _command.id;
-                    if (this.isTail()) {
-                        utils.getDirectionCommands().remove();
-                    }
-                }
-            }
-        }
-        getXYOfNextPart() {
-            let [_x, _y] = [this.x, this.y];
-            switch (this.direction) {
-                case 37:
-                    _x += snakeWidth;
-                    break;
-                case 38:
-                    _y += snakeWidth;
-                    break;
-                case 39:
-                    _x -= snakeWidth;
-                    break;
-                case 40:
-                    _y -= snakeWidth;
-                    break;
-            }
-            return { x: _x, y: _y };
-        }
-    }
+    // class SnakePart {
+    //     constructor(arena, x, y, dirx, partNumber, color) {
+    //         this.id = `${snakeId}-part${partNumber}`;
+    //         this.direction = dirx;
+    //         this.element = utils.createHTMLElement({
+    //             elementNamespace: utils.getSvgNamespace(),
+    //             elementType: config.SNAKE.elemType,
+    //             attributes: {
+    //                 id: this.id,
+    //                 tabIndex: partNumber,
+    //                 x,
+    //                 y,
+    //                 rx: snakeWidth,
+    //                 ry: snakeWidth,
+    //                 fill: color,
+    //                 width: utils.pixelify(snakeWidth),
+    //                 height: utils.pixelify(snakeWidth)
+    //             },
+    //             parent: arena
+    //         });
+    //         this.color = color;
+    //         this.next = null;
+    //         this.prev = null;
+    //     }
+    //     isSnakeHead() {
+    //         return this.id === snakeId;
+    //     }
+    //     get x() {
+    //         return parseInt(this.element.getAttribute('x'));
+    //     }
+    //     set x(value) {
+    //         this.element.setAttribute('x', Math.floor(value));
+    //     }
+    //     get y() {
+    //         return parseInt(this.element.getAttribute('y'));
+    //     }
+    //     set y(value) {
+    //         this.element.setAttribute('y', Math.floor(value));
+    //     }
+    //     get x2() {
+    //         return this.x + (snakeWidth - 1);
+    //     }
+    //     get y2() {
+    //         return this.y + (snakeWidth - 1);
+    //     }
+    //     isTail() {
+    //         return this.id === utils.getSnake().tail.id;
+    //     }
+    //     /**
+    //      * method calculates the next coordinates for a part on each step
+    //      */
+    //     nextXY() {
+    //         let nextPosition = {
+    //             'x': this.x, 'y': this.y
+    //         }
+    //         switch (this.direction) {
+    //             case 37:
+    //                 nextPosition.x -= snakeStep;
+    //                 break;
+    //             case 38:
+    //                 nextPosition.y -= snakeStep;
+    //                 break;
+    //             case 39:
+    //                 nextPosition.x += snakeStep;
+    //                 break;
+    //             case 40:
+    //                 nextPosition.y += snakeStep;
+    //                 break;
+    //         }
+    //         nextPosition = utils.checkBoundaryPosition(this.direction, nextPosition);
+    //         this.x = nextPosition.x;
+    //         this.y = nextPosition.y;
+    //         if (utils.getDirectionCommands().hasCommands()) {
+    //             let _command = utils.getDirectionCommands().getNextTurn(this.id);
+    //             if (_command && _command.position.x == this.x && _command.position.y == this.y) {
+    //                 this.direction = _command.direction;
+    //                 (utils.getSnakeDirectionMap())[this.id] = _command.id;
+    //                 if (this.isTail()) {
+    //                     utils.getDirectionCommands().remove();
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     getPositionOfNewPart() {
+    //         let [_x, _y] = [this.x, this.y];
+    //         switch (this.direction) {
+    //             case 37:
+    //                 _x += snakeWidth;
+    //                 break;
+    //             case 38:
+    //                 _y += snakeWidth;
+    //                 break;
+    //             case 39:
+    //                 _x -= snakeWidth;
+    //                 break;
+    //             case 40:
+    //                 _y -= snakeWidth;
+    //                 break;
+    //         }
+    //         return { x: _x, y: _y };
+    //     }
+    // }
 
     return {
         Snake

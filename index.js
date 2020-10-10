@@ -66,9 +66,10 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             this.topic = topic;
         }
         addObserver(obsrv) {
-            if (obsrv.element && obsrv.element.id) {
-                this.observers.push(obsrv);
+            if (!obsrv || !obsrv.element || !obsrv.element.id) {
+                return;
             }
+                this.observers.push(obsrv);
         }
         removeObserver(obsrv) {
             this.observers.splice(
@@ -96,6 +97,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
     }
 
     const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
+
+    const SNAKE_DIRECTION_MAP = {};
 
     const UTILS = {
         RENDER_UNIT: 'px',
@@ -336,10 +339,11 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 return commands.length > 0 ? true : false;
             },
             getNextTurn: function (snakePartId) {
-                if (typeof SNAKE_DIRECTION_MAP[snakePartId] === 'undefined') {
+                const directionMap = UTILS.getSnakeDirectionMap();
+                if (typeof directionMap[snakePartId] === 'undefined') {
                     return this.getFirst();
                 }
-                let turnMadeIndex = commands.findIndex(com => com.id === SNAKE_DIRECTION_MAP[snakePartId]);
+                let turnMadeIndex = commands.findIndex(com => com.id === directionMap[snakePartId]);
                 return (turnMadeIndex == commands.length - 1) ? undefined : commands[turnMadeIndex + 1];
             }
         };
@@ -351,8 +355,6 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             y: CONFIG.ARENA.center.y
         }
     });
-
-    const SNAKE_DIRECTION_MAP = {};
 
     const { Snake } = SnakeModule(CONFIG, UTILS);
     const SnakeFoodClass = SnakeFoodModule(CONFIG, UTILS);
@@ -440,7 +442,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             UTILS.LOGGER.log('game resumed');
         }
 
-        async stop() {
+        stop() {
             this._snake = null;
             UTILS.getWindow().clearInterval(this.getSnake().intervalId);
             const { intervalId: bonusFoodInterval } = this.getSnakeBonusFood();
