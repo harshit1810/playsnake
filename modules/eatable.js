@@ -24,7 +24,8 @@ export default function (config, utils) {
             color,
             size,
             isIntervalBased,
-            startAfter
+            startAfter,
+            points
         } = config[code];
 
         const element = utils.createHTMLElement({
@@ -57,6 +58,7 @@ export default function (config, utils) {
             set x2(v) { x2 = v; },
             get y2() { return y2; },
             set y2(v) { y2 = v; },
+            get points() { return parseInt(points); },
             get x() {
                 return parseInt(this.element.getAttribute('cx'));
             },
@@ -80,7 +82,7 @@ export default function (config, utils) {
                 return this.intervalId;
             },
             drop: function () {
-                const { x, y } = getNextFoodPosition(this.limits, this.size);
+                const { x, y } = getNextEatablePosition(this.limits, this.size);
                 this.x = x;
                 this.y = y;
             },
@@ -98,7 +100,7 @@ export default function (config, utils) {
      * @param {number} limits.y
      * @param {number} foodSize
      */
-    function getNextFoodPosition(limits, foodSize) {
+    function getNextEatablePosition(limits, foodSize) {
         function getRandomX() {
             return Math.floor(Math.random() * (limits.x - foodSize)) + utils.getArenaConfig().borderWidth + 1;
         }
@@ -116,7 +118,7 @@ export default function (config, utils) {
     }
 
     return {
-        getNextFoodPosition,
+        getNextEatablePosition,
         createEatableItem
     };
 }

@@ -8,7 +8,7 @@ module.exports = {
     devtool: 'source-map',
     plugins: [
         new HtmlWebpackPlugin({
-            title: 'Classic Snake Game'
+            title: 'PlaySnake'
         })
     ],
     module: {

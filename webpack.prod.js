@@ -8,7 +8,7 @@ module.exports = {
     plugins: [
         new CleanWebpackPlugin(['docs']),
         new HtmlWebpackPlugin({
-            title: 'Classic Snake Game'
+            title: 'PlaySnake'
         })
     ],
     module: {
