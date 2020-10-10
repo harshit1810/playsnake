@@ -11,6 +11,10 @@ export default function (config, utils) {
         size: bonusFoodSize,
     } = config.SNAKE_BONUS_FOOD;
 
+    const {
+        directionMap
+    } = utils.getArenaConfig();
+
     function Snake(arena, startX, startY, direction, speed) {
         let length = 1;
         let color = snakeColor;
@@ -68,34 +72,36 @@ export default function (config, utils) {
             set color(c) {
                 color = c;
             },
-            UP: function() {
+            UP: function () {
                 this.move(0, snakeStep * -1);
             },
-            DOWN: function() {
+            DOWN: function () {
                 this.move(0, snakeStep);
             },
-            RIGHT: function() {
+            RIGHT: function () {
                 this.move(snakeStep, 0);
             },
-            LEFT: function() {
+            LEFT: function () {
                 this.move(snakeStep * -1, 0);
             },
-            startSnake: function(newSpeed) {
+            startSnake: function (newSpeed) {
                 const self = this;
                 newSpeed = typeof newSpeed === 'number' ? newSpeed : this.speed;
-                self.intervalId = setInterval(function() {
+                self.intervalId = setInterval(function () {
                     self.changeDirection(self.currentDirection);
                     self.start();
                 }, newSpeed);
                 return self.intervalId;
             },
-            changeDirection: function(newDirection) {
+            changeDirection: function (newDirection) {
+                typeof newDirection === 'number' ? newDirection : this.currentDirection;
                 this.head.direction = newDirection;
             },
-            start: function() {
-                this[utils.getArenaConfig().directionMap[String(this.head.direction)]]();
+            start: function () {
+                const direction = directionMap[this.head.direction];
+                this[direction]();
             },
-            getPositionOfNewPart: function() {
+            getPositionOfNewPart: function () {
                 const { x, y, direction } = this.tail;
                 let [_x, _y] = [Number(x), Number(y)];
                 switch (direction) {
@@ -119,7 +125,7 @@ export default function (config, utils) {
              * @param {function} next a callback
              * @returns undefined
              */
-            grow: function(next) {
+            grow: function (next) {
                 const { x, y } = this.getPositionOfNewPart();
                 // const newPart = new SnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
                 const newPart = createSnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
@@ -133,20 +139,20 @@ export default function (config, utils) {
                     next();
                 }
             },
-            changeColor: function(colour) {
+            changeColor: function (colour) {
                 let _part = this.head;
                 while (_part.next !== null) {
                     change(_part, colour);
                     _part = _part.next;
                 }
-    
+
                 function change(_part, clr) {
                     setTimeout(() => {
                         _part.color = clr;
                     }, 0);
                 }
             },
-            isEatingFood: function() {
+            isEatingFood: function () {
                 const food = utils.getSnakeFood();
                 const { x: foodX, y: foodY } = food;
                 if (this.head.x < foodX
@@ -157,7 +163,7 @@ export default function (config, utils) {
                 }
                 return false;
             },
-            isEatingBonusFood: function() {
+            isEatingBonusFood: function () {
                 const head = this.head;
                 const { x: bonusFoodX, y: bonusFoodY } = utils.getSnakeBonusFood();
                 let x1 = bonusFoodX - bonusFoodSize - 1;
@@ -169,7 +175,7 @@ export default function (config, utils) {
                 }
                 return false;
             },
-            isEatingSpeedBonus: function() {
+            isEatingSpeedBonus: function () {
                 const speedBonus = utils.getSpeedBonus();
                 const { x, y } = speedBonus;
                 if (this.head.x < x
@@ -180,7 +186,7 @@ export default function (config, utils) {
                 }
                 return false;
             },
-            move: function(xvalue, yvalue) {
+            move: function (xvalue, yvalue) {
                 const isGoingToEatSelf = this.isDevouringSelf();
                 if (isGoingToEatSelf) {
                     utils.getGameEvents().emit('DEVOURED_SELF');
@@ -209,7 +215,7 @@ export default function (config, utils) {
                 }
                 this.moveAllParts(isEatingFood);
             },
-            moveAllParts: function(foodEaten) {
+            moveAllParts: function (foodEaten) {
                 if (this.length === 1) {
                     utils.getDirectionCommands().clear();
                 }
@@ -218,7 +224,7 @@ export default function (config, utils) {
             /**
              * @returns {boolean} indicates wether the snake is going to eat itself
              */
-            isDevouringSelf: function() {
+            isDevouringSelf: function () {
                 let isDevouring = false;
                 let nextPart = this.head.next;
                 let snakeDirection = this.head.direction;
@@ -286,16 +292,16 @@ export default function (config, utils) {
             element,
             color,
             get direction() {
-                return direction; 
+                return direction;
             },
             set direction(d) {
-                direction = d; 
+                direction = d;
             },
             get next() {
-                return next; 
+                return next;
             },
             get prev() {
-                return prev; 
+                return prev;
             },
             set next(element) {
                 next = element;
