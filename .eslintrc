@@ -1,0 +1,14 @@
+{
+    "parserOptions": {
+        "ecmaVersion": 6,
+        "sourceType": "module",
+        "ecmaFeatures": {
+        }
+    },
+    "rules": {
+        "no-console": "error",
+        "indent": ["warn", 4],
+        "comma-spacing": ["warn", { "before": false, "after": true }],
+        "brace-style": ["error", "1tbs", { "allowSingleLine": false }]
+    }
+}
