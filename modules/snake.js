@@ -1,6 +1,7 @@
 export default function (config, utils, gameInstance) {
 
     const {
+        color: snakeColor,
         width: snakeWidth,
         step: snakeStep,
         id: snakeId,
@@ -11,8 +12,13 @@ export default function (config, utils, gameInstance) {
         points: snakeFoodValue
     } = config.SNAKE_FOOD;
 
+    const {
+        size: bonusFoodSize,
+        points: bonusFoodPoints,
+    } = config.SNAKE_BONUS_FOOD;
+
     class Snake {
-        constructor(arena, startX, startY, direction, speed, color = config.SNAKE.color) {
+        constructor(arena, startX, startY, direction, speed, color = snakeColor) {
             this.length = 1;
             // this.head = new SnakePart(arena, startX, startY, direction, this.length, color);
             this.head = createSnakePart(arena, startX, startY, direction, this.length, color, this);
@@ -94,7 +100,6 @@ export default function (config, utils, gameInstance) {
             return false;
         }
         isEatingBonusFood() {
-            const bonusFoodSize = config.SNAKE_BONUS_FOOD.size;
             const head = this.head;
             const { x: bonusFoodX, y: bonusFoodY } = utils.getSnakeBonusFood();
             let x1 = bonusFoodX - bonusFoodSize - 1;
@@ -102,6 +107,18 @@ export default function (config, utils, gameInstance) {
             let y1 = bonusFoodY - bonusFoodSize - 1;
             let y2 = bonusFoodY + bonusFoodSize - 1;
             if (x1 < head.x && head.x < x2 && y1 < head.y && head.y < y2) {
+                return true;
+            }
+            return false;
+        }
+        isEatingSpeedBonus() {
+            const speedBonus = utils.getSpeedBonus();
+            const { x, y } = speedBonus;
+            if (this.head.x < x
+                && x < this.head.x2
+                && this.head.y < y
+                && y < this.head.y2) {
+                speedBonus.hide();
                 return true;
             }
             return false;
@@ -122,9 +139,13 @@ export default function (config, utils, gameInstance) {
             _part.y = nextY;
             const isEatingFood = this.isEatingFood();
             const isEatingBonusFood = this.isEatingBonusFood();
+            const isEatingSpeedBonus = this.isEatingSpeedBonus();
+            if (isEatingSpeedBonus) {
+                utils.LOGGER.log('What a rush!');
+            }
             if (isEatingBonusFood) {
                 utils.getSnakeBonusFood().hide();
-                utils.incrementScore(config.SNAKE_BONUS_FOOD.points);
+                utils.incrementScore(bonusFoodPoints);
             }
             this.moveAllParts(isEatingFood);
         }

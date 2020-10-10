@@ -1,8 +1,8 @@
 import GameEventHandlerModule from './modules/game-event-handler';
-import SnakeFoodModule from './modules/snake-food';
 import SnakeBonusFoodModule from './modules/snake-bonus-food';
 import SnakeModule from './modules/snake';
 import InitUIModule from './modules/init-ui';
+import Eatable from './modules/eatable';
 
 const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
 
@@ -69,7 +69,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             if (!obsrv || !obsrv.element || !obsrv.element.id) {
                 return;
             }
-                this.observers.push(obsrv);
+            this.observers.push(obsrv);
         }
         removeObserver(obsrv) {
             this.observers.splice(
@@ -99,6 +99,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
     const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
 
     const SNAKE_DIRECTION_MAP = {};
+
+    let game;
 
     const UTILS = {
         RENDER_UNIT: 'px',
@@ -131,6 +133,9 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         },
         getSnakeBonusFood: function () {
             return game.getSnakeBonusFood();
+        },
+        getSpeedBonus: function() {
+            return game.getSpeedBonusFood();
         },
         getDirectionCommands: function () {
             return COMMAND_STACK;
@@ -257,29 +262,43 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 'idPrefix': arg.snakeId + '-part'
             },
             SNAKE_FOOD: {
-                'id': arg.snakeFoodId,
-                'elemType': 'circle',
-                'color': arg.secondaryColor,
-                'size': Math.floor(arg.snakeSize / 3),
-                'startAfter': 2,
-                'limits': {
-                    'x': UTILS.getArenaConfig().limits.x - arg.snakeSize,
-                    'y': UTILS.getArenaConfig().limits.y - arg.snakeSize
+                id: arg.snakeFoodId,
+                elemType: 'circle',
+                color: arg.secondaryColor,
+                size: Math.floor(arg.snakeSize / 3),
+                startAfter: 2,
+                limits: {
+                    x: UTILS.getArenaConfig().limits.x - arg.snakeSize,
+                    y: UTILS.getArenaConfig().limits.y - arg.snakeSize
                 },
-                'points': arg.foodPoints
+                points: arg.foodPoints
             },
             SNAKE_BONUS_FOOD: {
-                'id': arg.snakeBonusFoodId,
-                'color': arg.alertColor,
-                'elemType': 'circle',
-                'size': arg.snakeSize,
-                'startAfter': 30,
-                'limits': {
-                    'x': UTILS.getArenaConfig().limits.x - (arg.snakeSize * 2),
-                    'y': UTILS.getArenaConfig().limits.y - (arg.snakeSize * 2)
+                id: arg.snakeBonusFoodId,
+                color: arg.alertColor,
+                elemType: 'circle',
+                size: arg.snakeSize,
+                startAfter: 30,
+                limits: {
+                    x: UTILS.getArenaConfig().limits.x - (arg.snakeSize * 2),
+                    y: UTILS.getArenaConfig().limits.y - (arg.snakeSize * 2)
                 },
-                'points': arg.bonusFoodPoints,
-                'duration': 10
+                points: arg.bonusFoodPoints,
+                duration: 10,
+                isIntervalBased: true
+            },
+            SPEED_BONUS_FOOD: {
+                id: arg.speedBonusId,
+                elemType: 'circle',
+                color: arg.speedBonusColor,
+                size: Math.floor(arg.snakeSize / 3),
+                points: arg.speedBonusPoints,
+                startAfter: arg.speedBonusStartAfter,
+                limits: {
+                    x: UTILS.getArenaConfig().limits.x - arg.snakeSize,
+                    y: UTILS.getArenaConfig().limits.y - arg.snakeSize
+                },
+                isIntervalBased: true
             },
             ARENA: {
                 center: {
@@ -299,7 +318,11 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         snakeLength: 1,
         snakeSize: 15,
         foodPoints: 5,
-        bonusFoodPoints: 10
+        bonusFoodPoints: 10,
+        speedBonusId: 'the-speed-bonus',
+        speedBonusColor: '#fcd303',
+        speedBonusPoints: 0,
+        speedBonusStartAfter: 30
     });
     let SNAKE_DIRECTION = 39;
 
@@ -356,8 +379,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
     });
 
+    const { createEatableItem, getNextFoodPosition } = Eatable(CONFIG, UTILS);
     const { Snake } = SnakeModule(CONFIG, UTILS);
-    const SnakeFoodClass = SnakeFoodModule(CONFIG, UTILS);
     const SnakeFoodBonusClass = SnakeBonusFoodModule(CONFIG, UTILS);
 
     class PlaySnakeGame {
@@ -370,6 +393,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             this.snakeDirection;
             this.arena = arena;
             this.snakeSpeed = 20;
+            this._speedBonus;
         }
 
         getSnake() {
@@ -388,12 +412,21 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             return this._snake;
         }
 
+        getSpeedBonusFood() {
+            if (this._speedBonus) {
+                return this._speedBonus;
+            }
+            const { x, y } = getNextFoodPosition(CONFIG.SPEED_BONUS_FOOD.limits, CONFIG.SPEED_BONUS_FOOD.size);
+            this._speedBonus = createEatableItem(this.arena, x, y, 'SPEED_BONUS_FOOD');
+            return this._speedBonus;
+        }
+
         getSnakeFood() {
-            if (this._snakeFood instanceof SnakeFoodClass) {
+            if (this._snakeFood) {
                 return this._snakeFood;
             }
-            const { x, y } = SnakeFoodClass.getNextFoodPosition();
-            this._snakeFood = new SnakeFoodClass(this.arena, x, y);
+            const { x, y } = getNextFoodPosition(CONFIG.SNAKE_FOOD.limits, CONFIG.SNAKE_FOOD.size);
+            this._snakeFood = createEatableItem(this.arena, x, y, 'SNAKE_FOOD');
             return this._snakeFood;
         }
 
@@ -413,9 +446,15 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 this.getSnake();
                 const food = this.getSnakeFood();
                 setTimeout(CONFIG.SNAKE_FOOD.startAfter * 1000, food);
+
                 const bonusFood = this.getSnakeBonusFood();
                 this.intervals.push(bonusFood.startBonusFood());
+
+                const speedBonusFood = this.getSpeedBonusFood();
+                this.intervals.push(speedBonusFood.startInterval());
+
                 this.setButtonListeners();
+
                 this.intervals.push(this.getSnake().startSnake());
             } catch (error) {
                 UTILS.showAlert(ERROR_MESSAGES.START_GAME);
@@ -487,7 +526,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
     }
 
-    const game = new PlaySnakeGame(SNAKE_ARENA);
+    game = new PlaySnakeGame(SNAKE_ARENA);
     gameEvents.init(game);
     game.start();
 };
