@@ -25,6 +25,11 @@ export default function () {
             points => {
                 gameInstance.updateScore(points);
             }
+        ],
+        USE_SPEED_BONUS: [
+            () => {
+                gameInstance.increaseSnakeSpeed();
+            }
         ]
     };
 

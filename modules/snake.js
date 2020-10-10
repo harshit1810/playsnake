@@ -41,11 +41,12 @@ export default function (config, utils) {
         LEFT() {
             this.move(snakeStep * -1, 0);
         }
-        startSnake() {
+        startSnake(newSpeed) {
+            newSpeed = typeof newSpeed === 'number' ? newSpeed : this.speed;
             this.intervalId = setInterval(() => {
                 this.changeDirection(this.currentDirection);
                 this.start();
-            }, this.speed);
+            }, newSpeed);
             return this.intervalId;
         }
         changeDirection(newDirection) {
@@ -144,6 +145,7 @@ export default function (config, utils) {
             if (isEatingSpeedBonus) {
                 utils.LOGGER.log('What a rush!');
                 utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSpeedBonus());
+                utils.getGameEvents().emit('USE_SPEED_BONUS', utils.getSpeedBonus());
             }
             if (isEatingBonusFood) {
                 utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSnakeBonusFood());

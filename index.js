@@ -302,7 +302,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                     x: UTILS.getArenaConfig().limits.x - arg.snakeSize,
                     y: UTILS.getArenaConfig().limits.y - arg.snakeSize
                 },
-                isIntervalBased: true
+                isIntervalBased: true,
+                speedDuration: arg.speedBonusDuration
             },
             ARENA: {
                 center: {
@@ -326,7 +327,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         speedBonusId: 'the-speed-bonus',
         speedBonusColor: '#fcd303',
         speedBonusPoints: 0,
-        speedBonusStartAfter: 30
+        speedBonusStartAfter: 30,
+        speedBonusDuration: 10
     });
     let SNAKE_DIRECTION = 39;
 
@@ -531,8 +533,23 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         }
 
         increaseSnakeSpeed() {
+            // stop current movement
             UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-            startSnake(CONFIG.SNAKE.speed - this.getSnake().length * 50);
+
+            // start with new speed
+            this.intervals.push(
+                this.getSnake().startSnake(
+                    this.getSnake().speed / 4
+                )
+            );
+
+            // revert to normal speed after some time
+            setTimeout(() => {
+                UTILS.getWindow().clearInterval(this.getSnake().intervalId);
+                this.intervals.push(
+                    this.getSnake().startSnake()
+                );
+            }, CONFIG.SPEED_BONUS_FOOD.speedDuration * 1000);
         }
     }
 
