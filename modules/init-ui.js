@@ -1,4 +1,17 @@
 export default function (utils) {
+
+    const directionMap = Object.keys(utils.getArenaConfig().directionMap)
+        .reduce((acc, keyCode) => {
+            const direction = utils.getArenaConfig().directionMap[keyCode];
+            acc[direction] = keyCode;
+            return acc;
+        }, {
+            UP: null,
+            DOWN: null,
+            RIGHT: null,
+            LEFT: null
+        });
+
     try {
         utils.getDocumentBody().style.fontFamily = 'Candara';
         const gameControlDiv = utils.createHTMLElement({
@@ -57,17 +70,94 @@ export default function (utils) {
             return btn;
         })();
 
-        const arenaContainer = utils.createHTMLElement({
-            elementType: 'div',
-            attributes: {
-                id: 'arena-container',
-                style: utils.getStyleString({
-                    display: 'flex',
-                    'flex-direction': 'cols',
-                    'flex-wrap': 'wrap',
-                })
-            }
-        });
+        const arenaContainer = (() => {
+            let initialTouchPos;
+            const elem = utils.createHTMLElement({
+                elementType: 'div',
+                attributes: {
+                    id: 'arena-container',
+                    style: utils.getStyleString({
+                        display: 'flex',
+                        'flex-direction': 'cols',
+                        'flex-wrap': 'wrap',
+                    })
+                }
+            });
+            elem.addEventListener('touchstart', event => {
+                event.preventDefault();
+                if (event.touches && event.touches.length > 1) {
+                    return;
+                }
+                const point = {};
+                if (event.targetTouches) {
+                    point.x = event.targetTouches[0].clientX;
+                    point.y = event.targetTouches[0].clientY;
+                }
+                initialTouchPos = point;
+            }, true);
+            elem.addEventListener('touchmove', event => {
+                event.preventDefault();
+            }, true);
+            elem.addEventListener('touchend', event => {
+                event.preventDefault();
+                const [x1, y1] = [parseInt(initialTouchPos.x), parseInt(initialTouchPos.y)];
+                initialTouchPos = null;
+                const touchList = event.changedTouches;
+                const lastTouch = touchList[0];
+                const [x2, y2] = [parseInt(lastTouch.clientX), parseInt(lastTouch.clientY)];
+                if (x1 === x2 && y1 === y2) {
+                    return; // did not swipe
+                }
+                const xdistance = x2 - x1;
+                const ydistance = y2 - y1;
+                if (Math.abs(xdistance) === Math.abs(ydistance)) {
+                    return; // swiped diagonal
+                }
+                if (xdistance === 0) {
+                    if (ydistance > 0) {
+                        // swiped down
+                        utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.DOWN });
+                        return;
+                    }
+                    // swiped up
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.UP });
+                    return;
+
+                } else if (ydistance === 0) {
+                    if (xdistance > 0) {
+                        //swiped right
+                        utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.RIGHT });
+                        return;
+                    }
+                    // swiped left
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.LEFT });
+                    return;
+                }
+
+                if (xdistance > 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.RIGHT });
+                    return; // swiped right
+                }
+                if (xdistance < 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.LEFT });
+                    return; // swiped left
+                }
+                if (ydistance > 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.DOWN });
+                    return // swiped down
+                }
+                if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
+                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.UP });
+                    return; // swiped up
+                }
+            }, true);
+            elem.addEventListener('touchcancel', event => {
+                event.preventDefault();
+                initialTouchPos = null;
+            }, true);
+            return elem;
+        })();
+
         const SNAKE_ARENA = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
             elementType: 'svg',

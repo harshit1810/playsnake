@@ -502,11 +502,11 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             if (UTILS.getArenaConfig().supportedKeys.indexOf(direction) === -1) {
                 return UTILS.LOGGER.log('Invalid direction');
             }
-            this.snakeDirection = event.keyCode;
+            this.snakeDirection = direction;
             this.getSnake().currentDirection = this.snakeDirection;
             COMMAND_STACK.add({
                 id: Date.now(),
-                direction: event.keyCode,
+                direction,
                 position: {
                     x: this.getSnake().head.x,
                     y: this.getSnake().head.y
