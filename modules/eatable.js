@@ -25,7 +25,8 @@ export default function (config, utils) {
             size,
             isIntervalBased,
             startAfter,
-            points
+            points,
+            appearDuration
         } = config[code];
 
         const element = utils.createHTMLElement({
@@ -97,14 +98,15 @@ export default function (config, utils) {
             set y(value) {
                 this.element.setAttribute('cy', Math.floor(value));
             },
+            get appearDuration() {
+                return appearDuration;
+            },
             startInterval: function () {
                 if (!this.isIntervalBased) {
                     return;
                 }
                 this.intervalId = setInterval(
-                    () => {
-                        this.drop(); 
-                    },
+                    this.drop.bind(this),
                     this.startAfter * 1000
                 );
                 return this.intervalId;
@@ -113,6 +115,11 @@ export default function (config, utils) {
                 const { x, y } = getNextEatablePosition(this.limits, this.size);
                 this.x = x;
                 this.y = y;
+                // if this eatable is configured to appear for some amount of time
+                // schedule it's removal
+                if (typeof this.appearDuration === 'number') {
+                    setTimeout(this.hide.bind(this), this.appearDuration * 1000);
+                }
             },
             hide: function () {
                 this.x = -10;

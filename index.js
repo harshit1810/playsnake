@@ -62,6 +62,32 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             'id': 'resume-play-snake',
             'text': 'Resume',
             'order': '1'
+        },
+        eatables: {
+            basicFood: {
+                color: '#aba99f',
+                description: 'Basic food',
+                showInLegend: true,
+                points: 5,
+                appearDuration: null,
+                startAfter: 0
+            },
+            bonusFood: {
+                color: '#d12308',
+                description: 'Bonus point',
+                showInLegend: true,
+                points: 10,
+                appearDuration: 10,
+                startAfter: 30
+            },
+            speedBonus: {
+                color: '#ffe205',
+                description: 'Extra speed',
+                showInLegend: true,
+                points: 0,
+                appearDuration: 10,
+                startAfter: 30
+            }
         }
     };
 
@@ -257,7 +283,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 id: arg.snakeId,
                 elemType: 'rect',
                 width: arg.snakeSize,
-                color: arg.primaryColor,
+                color: arg.snakeColor,
                 length: arg.snakeLength,
                 speed: arg.snakeSpeed,
                 step: 1
@@ -268,9 +294,9 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
             SNAKE_FOOD: {
                 id: arg.snakeFoodId,
                 elemType: 'circle',
-                color: arg.secondaryColor,
+                color: arg.basicFoodColor,
                 size: Math.floor(arg.snakeSize / 3),
-                startAfter: 2,
+                startAfter: arg.basicFoodStartAfter,
                 limits: {
                     x: UTILS.getArenaConfig().limits.x - arg.snakeSize,
                     y: UTILS.getArenaConfig().limits.y - arg.snakeSize
@@ -278,18 +304,18 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                 points: arg.foodPoints
             },
             SNAKE_BONUS_FOOD: {
-                id: arg.snakeBonusFoodId,
-                color: arg.alertColor,
+                id: arg.bonusFoodId,
+                color: arg.bonusFoodColor,
                 elemType: 'circle',
                 size: arg.snakeSize,
-                startAfter: 30,
+                startAfter: arg.bonusFoodStartAfter,
                 limits: {
                     x: UTILS.getArenaConfig().limits.x - (arg.snakeSize * 2),
                     y: UTILS.getArenaConfig().limits.y - (arg.snakeSize * 2)
                 },
                 points: arg.bonusFoodPoints,
-                duration: 10,
-                isIntervalBased: true
+                isIntervalBased: true,
+                appearDuration: arg.bonusFoodAppearDuration
             },
             SPEED_BONUS_FOOD: {
                 id: arg.speedBonusId,
@@ -303,7 +329,8 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
                     y: UTILS.getArenaConfig().limits.y - arg.snakeSize
                 },
                 isIntervalBased: true,
-                speedDuration: arg.speedBonusDuration
+                speedDuration: arg.speedBonusDuration,
+                appearDuration: arg.speedBonusAppearDuration
             },
             ARENA: {
                 center: {
@@ -315,19 +342,23 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
     })({
         snakeId: 'the-snake',
         snakeFoodId: 'the-snake-food',
-        snakeBonusFoodId: 'the-snake-bonus-food',
         snakeSpeed: 20,
-        primaryColor: 'black',
-        secondaryColor: 'grey',
-        alertColor: 'red',
+        snakeColor: 'black',
         snakeLength: 1,
         snakeSize: 15,
-        foodPoints: 5,
-        bonusFoodPoints: 10,
+        basicFoodColor: CONFIG_ARENA.eatables.basicFood.color,
+        basicFoodStartAfter: 2,
+        foodPoints: CONFIG_ARENA.eatables.basicFood.points,
+        bonusFoodId: 'the-snake-bonus-food',
+        bonusFoodPoints: CONFIG_ARENA.eatables.bonusFood.points,
+        bonusFoodColor: CONFIG_ARENA.eatables.bonusFood.color,
+        bonusFoodAppearDuration: CONFIG_ARENA.eatables.bonusFood.appearDuration,
+        bonusFoodStartAfter: CONFIG_ARENA.eatables.bonusFood.startAfter,
         speedBonusId: 'the-speed-bonus',
-        speedBonusColor: '#fcd303',
-        speedBonusPoints: 0,
-        speedBonusStartAfter: 30,
+        speedBonusColor: CONFIG_ARENA.eatables.speedBonus.color,
+        speedBonusPoints: CONFIG_ARENA.eatables.speedBonus.points,
+        speedBonusStartAfter: CONFIG_ARENA.eatables.speedBonus.startAfter,
+        speedBonusAppearDuration: CONFIG_ARENA.eatables.speedBonus.appearDuration,
         speedBonusDuration: 10
     });
 
@@ -500,7 +531,15 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
          */
         handleSnakeDirectionChange(direction) {
             if (UTILS.getArenaConfig().supportedKeys.indexOf(direction) === -1) {
-                return UTILS.LOGGER.log('Invalid direction');
+                return;
+            }
+            /**
+             * the new direction should not be the current direction 
+             * or the opposite direction.
+             */
+            if (this.getSnake().currentDirection == direction ||
+                direction == UTILS.getArenaConfig().keyConfig[String(this.getSnake().currentDirection)].reverse) {
+                return;
             }
             this.snakeDirection = direction;
             this.getSnake().currentDirection = this.snakeDirection;
@@ -517,16 +556,7 @@ const PLAY_SNAKE = (ARENA_WIDTH = 500, ARENA_HEIGHT = 500) => {
         setButtonListeners() {
             UTILS.getWindow().addEventListener('unload', this.stop);
             UTILS.getDocument().addEventListener('keydown', event => {
-                /** listen only for direction keys */
                 if (UTILS.getArenaConfig().supportedKeys.indexOf(event.keyCode) === -1) {
-                    return;
-                }
-                /**
-                 * the new direction should not be the current direction 
-                 * or the opposite direction.
-                 */
-                if (this.getSnake().currentDirection == event.keyCode ||
-                    event.keyCode == UTILS.getArenaConfig().keyConfig[String(this.getSnake().currentDirection)].reverse) {
                     return;
                 }
                 UTILS.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: event.keyCode });

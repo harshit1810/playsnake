@@ -127,7 +127,6 @@ export default function (config, utils) {
              */
             grow: function (next) {
                 const { x, y } = this.getPositionOfNewPart();
-                // const newPart = new SnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
                 const newPart = createSnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
                 this.length += 1;
                 this.tail.next = newPart;
@@ -206,7 +205,6 @@ export default function (config, utils) {
                     utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSnakeFood());
                 }
                 if (isEatingSpeedBonus) {
-                    utils.LOGGER.log('What a rush!');
                     utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSpeedBonus());
                     utils.getGameEvents().emit('USE_SPEED_BONUS', utils.getSpeedBonus());
                 }
