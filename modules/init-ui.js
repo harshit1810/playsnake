@@ -1,5 +1,18 @@
 export default function (utils) {
 
+    const Styles = {
+        FlexRows: {
+            display: 'flex',
+            'flex-direction': 'column'
+        },
+        FlexCols: {
+            display: 'flex',
+            'flex-direction': 'row'
+        },
+        CapitalizeText: {
+            'text-transform': 'capitalize'
+        }
+    };
     const directionMap = Object.keys(utils.getArenaConfig().directionMap)
         .reduce((acc, keyCode) => {
             const direction = utils.getArenaConfig().directionMap[keyCode];
@@ -12,18 +25,17 @@ export default function (utils) {
             LEFT: null
         });
 
+    utils.getDocumentBody().style.fontFamily = 'Candara';
     try {
-        utils.getDocumentBody().style.fontFamily = 'Candara';
         const gameControlDiv = utils.createHTMLElement({
             elementType: 'div',
             attributes: {
-                style: utils.getStyleString({
-                    display: 'flex',
-                    'flex-direction': 'row',
-                    'flex-wrap': 'nowrap',
+                style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
+                    'flex-wrap': 'wrap',
+                    'justify-content': 'flex-start',
                     width: utils.pixelify(utils.getArenaConfig().width),
                     padding: '1% 0%'
-                })
+                }))
             }
         });
 
@@ -76,11 +88,9 @@ export default function (utils) {
                 elementType: 'div',
                 attributes: {
                     id: 'arena-container',
-                    style: utils.getStyleString({
-                        display: 'flex',
-                        'flex-direction': 'cols',
+                    style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
                         'flex-wrap': 'wrap',
-                    })
+                    }))
                 }
             });
             elem.addEventListener('touchstart', event => {
@@ -170,31 +180,67 @@ export default function (utils) {
             parent: arenaContainer
         });
 
-        const legendContainer = utils.createHTMLElement({
-            elementType: 'div',
-            parent: arenaContainer,
-            attributes: {
-                id: 'legend-container',
-                style: utils.getStyleString({
-                    padding: '2px 2px'
-                })
+        (() => {
+            const _legend_container = utils.createHTMLElement({
+                elementType: 'div',
+                parent: arenaContainer,
+                attributes: {
+                    id: 'legend-container',
+                    style: utils.getStyleString(Object.assign({}, Styles.FlexRows, {
+                        padding: '2px 2px',
+                        'justify-content': 'flex-start'
+                    }))
+                }
+            });
+            // create legend keys
+            try {
+                const {
+                    eatables = {}
+                } = utils.getArenaConfig();
+                Object.keys(eatables).forEach(eatableName => {
+                    const { description, showInLegend, color = 'white' } = eatables[eatableName];
+                    if (!showInLegend || !description) {
+                        return; 
+                    }
+                    const legend = utils.createHTMLElement({
+                        parent: _legend_container,
+                        elementType: 'div',
+                        attributes: {
+                            style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
+                                'margin-bottom': '5px',
+                                'align-items': 'center'
+                            }))
+                        }
+                    });
+                    utils.createHTMLElement({
+                        parent: legend,
+                        elementType: 'div',
+                        attributes: {
+                            style: utils.getStyleString({
+                                height: '10px',
+                                width: '10px',
+                                'background-color': color,
+                                'border-radius': '5px'
+                            })
+                        }
+                    });
+                    utils.createHTMLElement({
+                        parent: legend,
+                        elementType: 'span',
+                        innerHTML: description,
+                        attributes: {
+                            style: utils.getStyleString(Object.assign({}, Styles.CapitalizeText, {
+                                padding: '0px 2px'
+                            }))
+                        }
+                    });
+
+                });
+            } catch (e) {
+                utils.LOGGER.warn(`Failed while drawing legend: ${e}`);
             }
-        });
-        utils.createHTMLElement({
-            parent: legendContainer,
-            elementType: 'div',
-            innerHTML: 'Speed Powerup'
-        });
-        utils.createHTMLElement({
-            parent: legendContainer,
-            elementType: 'div',
-            innerHTML: 'Bonus 10 points'
-        });
-        utils.createHTMLElement({
-            parent: legendContainer,
-            elementType: 'div',
-            innerHTML: '5 points'
-        });
+            return _legend_container;
+        })();
 
         const scoreContainer = utils.createHTMLElement({
             elementType: 'div',
@@ -218,8 +264,8 @@ export default function (utils) {
             PAUSE_BUTTON,
             SCORE_BOARD
         };
-    } catch (e) {
-        utils.LOGGER.error(e);
-        throw e;
+    } catch (error) {
+        utils.LOGGER.error(`Failed to setup the page: ${error}`);
+        throw error;
     }
 }

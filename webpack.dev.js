@@ -8,7 +8,10 @@ module.exports = {
     devtool: 'source-map',
     plugins: [
         new HtmlWebpackPlugin({
-            title: 'PlaySnake'
+            title: 'PlaySnake',
+            meta: {
+                viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no'
+            }
         }),
         new ESLintPlugin({
             fix: true,
