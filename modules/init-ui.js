@@ -41,7 +41,7 @@ export default function (utils) {
 
         const styleString = utils.getStyleString({
             padding: '2% 2%',
-            'border-radius': '5px',
+            'border-radius': utils.pixelify(5),
             flex: '0 1 20%',
             'text-align': 'center',
             'align-self': 'flex-end'
@@ -70,7 +70,10 @@ export default function (utils) {
                 innerHTML: utils.getArenaConfig().resumeButton.text,
                 attributes: {
                     id: utils.getArenaConfig().resumeButton.id,
-                    style: `${styleString} margin-left: 2%; order: ${utils.getArenaConfig().resumeButton.order}`
+                    style: styleString + ' ' + utils.getStyleString({
+                        'margin-left': '2%',
+                        order: utils.getArenaConfig().resumeButton.order
+                    })
                 },
                 eventListeners: {
                     click: utils.getArenaConfig().resumeButton.clickHandler
@@ -116,49 +119,79 @@ export default function (utils) {
                 const lastTouch = touchList[0];
                 const [x2, y2] = [parseInt(lastTouch.clientX), parseInt(lastTouch.clientY)];
                 if (x1 === x2 && y1 === y2) {
-                    return; // did not swipe
+                    // did not swipe
+                    return;
                 }
                 const xdistance = x2 - x1;
                 const ydistance = y2 - y1;
                 if (Math.abs(xdistance) === Math.abs(ydistance)) {
-                    return; // swiped diagonal
+                    // swiped diagonal
+                    return;
                 }
                 if (xdistance === 0) {
                     if (ydistance > 0) {
                         // swiped down
-                        utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.DOWN });
+                        utils.getGameEvents().emit(
+                            'SNAKE_DIRECTION_CHANGE',
+                            { direction: directionMap.DOWN }
+                        );
                         return;
                     }
                     // swiped up
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.UP });
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.UP }
+                    );
                     return;
 
                 } else if (ydistance === 0) {
                     if (xdistance > 0) {
                         //swiped right
-                        utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.RIGHT });
+                        utils.getGameEvents().emit(
+                            'SNAKE_DIRECTION_CHANGE',
+                            { direction: directionMap.RIGHT }
+                        );
                         return;
                     }
                     // swiped left
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.LEFT });
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.LEFT }
+                    );
                     return;
                 }
 
                 if (xdistance > 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.RIGHT });
-                    return; // swiped right
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.RIGHT }
+                    );
+                    // swiped right
+                    return;
                 }
                 if (xdistance < 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.LEFT });
-                    return; // swiped left
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.LEFT }
+                    );
+                    // swiped left
+                    return;
                 }
                 if (ydistance > 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.DOWN });
-                    return // swiped down
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.DOWN }
+                    );
+                    // swiped down
+                    return
                 }
                 if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                    utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: directionMap.UP });
-                    return; // swiped up
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction: directionMap.UP }
+                    );
+                    // swiped up
+                    return;
                 }
             }, true);
             elem.addEventListener('touchcancel', event => {
@@ -175,7 +208,10 @@ export default function (utils) {
                 id: utils.getArenaConfig().id,
                 height: utils.getArenaConfig().height,
                 width: utils.getArenaConfig().width,
-                style: `border: ${utils.pixelify(utils.getArenaConfig().borderWidth)} solid ${utils.getArenaConfig().borderColor}`
+                style: 'border: ' +
+                    utils.pixelify(utils.getArenaConfig().borderWidth) +
+                    ' solid ' +
+                    utils.getArenaConfig().borderColor
             },
             parent: arenaContainer
         });
@@ -187,7 +223,7 @@ export default function (utils) {
                 attributes: {
                     id: 'legend-container',
                     style: utils.getStyleString(Object.assign({}, Styles.FlexRows, {
-                        padding: '2px 2px',
+                        padding: `${utils.pixelify(2)} ${utils.pixelify(2)}`,
                         'justify-content': 'flex-start'
                     }))
                 }
@@ -200,14 +236,14 @@ export default function (utils) {
                 Object.keys(eatables).forEach(eatableName => {
                     const { description, showInLegend, color = 'white' } = eatables[eatableName];
                     if (!showInLegend || !description) {
-                        return; 
+                        return;
                     }
                     const legend = utils.createHTMLElement({
                         parent: _legend_container,
                         elementType: 'div',
                         attributes: {
                             style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
-                                'margin-bottom': '5px',
+                                'margin-bottom': utils.pixelify(5),
                                 'align-items': 'center'
                             }))
                         }
@@ -217,10 +253,10 @@ export default function (utils) {
                         elementType: 'div',
                         attributes: {
                             style: utils.getStyleString({
-                                height: '10px',
-                                width: '10px',
+                                height: utils.pixelify(10),
+                                width: utils.pixelify(10),
                                 'background-color': color,
-                                'border-radius': '5px'
+                                'border-radius': utils.pixelify(5)
                             })
                         }
                     });
@@ -230,7 +266,7 @@ export default function (utils) {
                         innerHTML: description,
                         attributes: {
                             style: utils.getStyleString(Object.assign({}, Styles.CapitalizeText, {
-                                padding: '0px 2px'
+                                padding: `${utils.pixelify(0)} ${utils.pixelify(2)}`
                             }))
                         }
                     });
