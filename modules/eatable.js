@@ -1,20 +1,14 @@
-export default function (config, utils) {
+export default function (utils) {
 
-    // const {
-    //     id,
-    //     limits,
-    //     elemType: elementType,
-    //     color: foodColor,
-    //     size: foodSize
-    // } = config.SNAKE_FOOD;
+    const config = utils.getArenaConfig();
 
     const {
         width: snakeWidth
-    } = config.SNAKE;
+    } = config.snake;
 
     function createEatableItem(arena, cx, cy, code) {
 
-        if (!config[code]) {
+        if (!config.eatables[code]) {
             return utils.LOGGER.warn(`item ${code} is not configured`);
         }
         const {
@@ -27,7 +21,7 @@ export default function (config, utils) {
             startAfter,
             points,
             appearDuration
-        } = config[code];
+        } = config.eatables[code];
 
         const element = utils.createHTMLElement({
             elementType: elemType,
@@ -42,49 +36,49 @@ export default function (config, utils) {
             parent: utils.getArena(),
             beforeElement: utils.getSnake().head.element
         });
-        // const arena = arena;
         let [x2, y2] = [cx + (size - 1), cy + (size - 1)];
-        let intervalId; // used if this eatable is interval based
+        // used if this eatable is interval based
+        let intervalId;
 
         return {
             get isIntervalBased() {
-                return isIntervalBased; 
+                return isIntervalBased;
             },
             get element() {
-                return element; 
+                return element;
             },
             get arena() {
-                return arena; 
+                return arena;
             },
             get limits() {
-                return limits; 
+                return limits;
             },
             get intervalId() {
-                return intervalId; 
+                return intervalId;
             },
             set intervalId(i) {
-                intervalId = i; 
+                intervalId = i;
             },
             get startAfter() {
-                return startAfter; 
+                return startAfter;
             },
             get size() {
-                return size; 
+                return size;
             },
             get x2() {
-                return x2; 
+                return x2;
             },
             set x2(v) {
-                x2 = v; 
+                x2 = v;
             },
             get y2() {
-                return y2; 
+                return y2;
             },
             set y2(v) {
-                y2 = v; 
+                y2 = v;
             },
             get points() {
-                return parseInt(points); 
+                return parseInt(points);
             },
             get x() {
                 return parseInt(this.element.getAttribute('cx'));
@@ -137,10 +131,12 @@ export default function (config, utils) {
      */
     function getNextEatablePosition(limits, foodSize) {
         function getRandomX() {
-            return Math.floor(Math.random() * (limits.x - foodSize)) + utils.getArenaConfig().borderWidth + 1;
+            return Math.floor(Math.random() * (limits.x - foodSize)) +
+                utils.getArenaConfig().borderWidth + 1;
         }
         function getRandomY() {
-            return Math.floor(Math.random() * (limits.y - foodSize)) + utils.getArenaConfig().borderWidth + 1;
+            return Math.floor(Math.random() * (limits.y - foodSize)) +
+                utils.getArenaConfig().borderWidth + 1;
         }
         let _x, _y;
         do {

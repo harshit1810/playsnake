@@ -2,13 +2,55 @@
     "parserOptions": {
         "ecmaVersion": 6,
         "sourceType": "module",
-        "ecmaFeatures": {
-        }
+        "ecmaFeatures": {}
     },
     "rules": {
         "no-console": "error",
-        "indent": ["warn", 4],
-        "comma-spacing": ["warn", { "before": false, "after": true }],
-        "brace-style": ["error", "1tbs", { "allowSingleLine": false }]
+        "indent": [
+            "warn",
+            4
+        ],
+        "comma-spacing": [
+            "warn",
+            {
+                "before": false,
+                "after": true
+            }
+        ],
+        "brace-style": [
+            "error",
+            "1tbs",
+            {
+                "allowSingleLine": false
+            }
+        ],
+        "no-eval": "error",
+        "no-proto": "error",
+        "no-redeclare": "error",
+        "valid-typeof": "error",
+        "no-constructor-return": "error",
+        "block-scoped-var": "warn",
+        "key-spacing": [
+            "error",
+            {
+                "beforeColon": false,
+                "afterColon": true
+            }
+        ],
+        "quote-props": [
+            "error",
+            "as-needed"
+        ],
+        "no-inline-comments": "warn",
+        "max-len": [
+            "warn",
+            {
+                "code": 100
+            }
+        ],
+        "multiline-ternary": [
+            "error",
+            "always"
+        ]
     }
 }

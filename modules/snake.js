@@ -1,19 +1,19 @@
-export default function (config, utils) {
-
+export default function (utils) {
+    const config = utils.getArenaConfig();
+    
     const {
+        elemType: snakeElementType,
         color: snakeColor,
         width: snakeWidth,
         step: snakeStep,
         id: snakeId,
-    } = config.SNAKE;
+    } = config.snake;
 
     const {
         size: bonusFoodSize,
-    } = config.SNAKE_BONUS_FOOD;
+    } = config.eatables.bonusFood;
 
-    const {
-        directionMap
-    } = utils.getArenaConfig();
+    const directionMap = config.directionMap;
 
     function Snake(arena, startX, startY, direction, speed) {
         let length = 1;
@@ -86,7 +86,9 @@ export default function (config, utils) {
             },
             startSnake: function (newSpeed) {
                 const self = this;
-                newSpeed = typeof newSpeed === 'number' ? newSpeed : this.speed;
+                newSpeed = typeof newSpeed === 'number'
+                    ? newSpeed
+                    : this.speed;
                 self.intervalId = setInterval(function () {
                     self.changeDirection(self.currentDirection);
                     self.start();
@@ -94,7 +96,9 @@ export default function (config, utils) {
                 return self.intervalId;
             },
             changeDirection: function (newDirection) {
-                typeof newDirection === 'number' ? newDirection : this.currentDirection;
+                typeof newDirection === 'number'
+                    ? newDirection
+                    : this.currentDirection;
                 this.head.direction = newDirection;
             },
             start: function () {
@@ -127,7 +131,9 @@ export default function (config, utils) {
              */
             grow: function (next) {
                 const { x, y } = this.getPositionOfNewPart();
-                const newPart = createSnakePart(this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color);
+                const newPart = createSnakePart(
+                    this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color
+                );
                 this.length += 1;
                 this.tail.next = newPart;
                 newPart.prev = this.tail;
@@ -193,8 +199,8 @@ export default function (config, utils) {
                 }
                 const _part = this.head;
                 let { x: nextX, y: nextY } = utils.checkBoundaryPosition(_part.direction, {
-                    'x': _part.x + xvalue,
-                    'y': _part.y + yvalue
+                    x: _part.x + xvalue,
+                    y: _part.y + yvalue
                 });
                 _part.x = nextX;
                 _part.y = nextY;
@@ -227,26 +233,35 @@ export default function (config, utils) {
                 let nextPart = this.head.next;
                 let snakeDirection = this.head.direction;
                 while (nextPart !== null) {
-                    // check for tail node and nodes which are traveliing in different direction than the head
+                    // check for tail node and nodes which are 
+                    // travelling in different direction than the head
                     if (nextPart.direction !== snakeDirection || nextPart.id === this.tail.id) {
                         switch (snakeDirection) {
                         case 37:
-                            if (this.head.y === nextPart.y && this.head.x > nextPart.x && this.head.x <= nextPart.x2) {
+                            if (this.head.y === nextPart.y &&
+                                    this.head.x > nextPart.x &&
+                                    this.head.x <= nextPart.x2) {
                                 isDevouring = true;
                             }
                             break;
                         case 38:
-                            if (this.head.x === nextPart.x && this.head.y > nextPart.y && this.head.y <= nextPart.y2) {
+                            if (this.head.x === nextPart.x &&
+                                    this.head.y > nextPart.y &&
+                                    this.head.y <= nextPart.y2) {
                                 isDevouring = true;
                             }
                             break;
                         case 39:
-                            if (this.head.y === nextPart.y && this.head.x2 < nextPart.x2 && this.head.x2 >= nextPart.x) {
+                            if (this.head.y === nextPart.y &&
+                                    this.head.x2 < nextPart.x2 &&
+                                    this.head.x2 >= nextPart.x) {
                                 isDevouring = true;
                             }
                             break;
                         case 40:
-                            if (this.head.x === nextPart.x && this.head.y2 < nextPart.y2 && this.head.y2 >= nextPart.y) {
+                            if (this.head.x === nextPart.x &&
+                                    this.head.y2 < nextPart.y2 &&
+                                    this.head.y2 >= nextPart.y) {
                                 isDevouring = true;
                             }
                             break;
@@ -268,7 +283,7 @@ export default function (config, utils) {
         let direction = dirx;
         const element = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
-            elementType: config.SNAKE.elemType,
+            elementType: snakeElementType,
             attributes: {
                 id,
                 tabIndex: partNumber,
@@ -337,7 +352,7 @@ export default function (config, utils) {
              */
             nextXY: function () {
                 let nextPosition = {
-                    'x': this.x, 'y': this.y
+                    x: this.x, y: this.y
                 };
                 // get coordinates for next step in the same direction
                 switch (this.direction) {
@@ -364,10 +379,13 @@ export default function (config, utils) {
                     const _command = commandStack.getNextTurn(id);
                     // change direction of this part when it reaches the position 
                     // at which the direction command was given
-                    if (_command && _command.position.x == this.x && _command.position.y == this.y) {
-                        this.direction = _command.direction; // set new direction
+                    if (_command && _command.position.x == this.x &&
+                        _command.position.y == this.y) {
+                        // set new direction
+                        this.direction = _command.direction;
                         (utils.getSnakeDirectionMap())[id] = _command.id;
-                        // remove the recorded command if the last part has followed the direction command
+                        // remove the recorded command 
+                        // if the last part has followed the direction command
                         if (this.isTail()) {
                             commandStack.remove();
                         }
