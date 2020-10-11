@@ -9,7 +9,10 @@ module.exports = {
     plugins: [
         new CleanWebpackPlugin(['docs']),
         new HtmlWebpackPlugin({
-            title: 'PlaySnake'
+            title: 'PlaySnake',
+            meta: {
+                viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no'
+            }
         }),
         new ESLintPlugin({
             fix: true,
