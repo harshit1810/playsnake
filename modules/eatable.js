@@ -33,8 +33,8 @@ export default function (utils) {
                 r: size,
                 fill: color
             },
-            parent: utils.getArena(),
-            beforeElement: utils.getSnake().head.element
+            parent: utils.getGame().arena,
+            beforeElement: utils.getGame().getSnake().head.element
         });
         let [x2, y2] = [cx + (size - 1), cy + (size - 1)];
         // used if this eatable is interval based
