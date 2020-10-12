@@ -1,7 +1,5 @@
+import GameModule from './modules/game';
 import GameEventHandlerModule from './modules/game-event-handler';
-import SnakeModule from './modules/snake';
-import InitUIModule from './modules/init-ui';
-import Eatable from './modules/eatable';
 
 const PLAY_SNAKE = function () {
     if (!window) {
@@ -16,6 +14,7 @@ const PLAY_SNAKE = function () {
         : MAX_HEIGHT_WIDTH;
     const ERROR_MESSAGES = {
         DEFAULT: 'Sorry.',
+        SETUP_GAME: 'Failed to setup',
         START_GAME: 'Unable To Start The Game'
     };
 
@@ -97,7 +96,9 @@ const PLAY_SNAKE = function () {
                 limits: {
                     x: limits.x - snakeWidth,
                     y: limits.y - snakeWidth
-                }
+                },
+                isIntervalBased: false,
+                code: 'basicFood'
             },
             bonusFood: {
                 id: 'the-snake-bonus-food',
@@ -108,7 +109,13 @@ const PLAY_SNAKE = function () {
                 appearDuration: 10,
                 startAfter: 30,
                 elemType: 'circle',
-                size: 15
+                size: 15,
+                limits: {
+                    x: limits.x - (snakeWidth * 2),
+                    y: limits.y - (snakeWidth * 2)
+                },
+                isIntervalBased: true,
+                code: 'bonusFood'
             },
             speedBonus: {
                 id: 'the-speed-bonus',
@@ -120,7 +127,13 @@ const PLAY_SNAKE = function () {
                 startAfter: 30,
                 elemType: 'circle',
                 size: 5,
-                speedDuration: 10
+                speedDuration: 10,
+                limits: {
+                    x: limits.x - snakeWidth,
+                    y: limits.y - snakeWidth
+                },
+                isIntervalBased: true,
+                code: 'speedBonus'
             }
         }
     };
@@ -158,8 +171,8 @@ const PLAY_SNAKE = function () {
             if (!foodEaten) {
                 return;
             }
-            const food = UTILS.getSnakeFood();
-            UTILS.getSnake().grow(food.drop.bind(food));
+            const food = UTILS.getGame().getSnakeFood();
+            UTILS.getGame().getSnake().grow(food.drop.bind(food));
         }
     }
 
@@ -167,7 +180,7 @@ const PLAY_SNAKE = function () {
 
     const SNAKE_DIRECTION_MAP = {};
 
-    let game;
+    let game, COMMAND_STACK;
 
     const UTILS = {
         RENDER_UNIT: 'px',
@@ -186,26 +199,11 @@ const PLAY_SNAKE = function () {
         showAlert: function (message) {
             this.getWindow().alert(message);
         },
-        getArena: function () {
-            return SNAKE_ARENA;
-        },
         getArenaConfig: function () {
             return CONFIG_ARENA;
         },
         getGame: function () {
             return game;
-        },
-        getSnake: function () {
-            return this.getGame().getSnake();
-        },
-        getSnakeFood: function () {
-            return this.getGame().getSnakeFood();
-        },
-        getSnakeBonusFood: function () {
-            return this.getGame().getSnakeBonusFood();
-        },
-        getSpeedBonus: function () {
-            return this.getGame().getSpeedBonusFood();
         },
         getDirectionCommands: function () {
             return COMMAND_STACK;
@@ -306,6 +304,9 @@ const PLAY_SNAKE = function () {
             }
             return position;
         },
+        getErrorMessages: function() {
+            return ERROR_MESSAGES;
+        },
         LOGGER: {
             // eslint-disable-next-line no-console
             log: console.log,
@@ -316,15 +317,10 @@ const PLAY_SNAKE = function () {
         }
     };
 
-    const { SNAKE_ARENA, PLAY_BUTTON, PAUSE_BUTTON, SCORE_BOARD } = InitUIModule(UTILS);
-    if (!SNAKE_ARENA) {
-        return UTILS.showAlert(ERROR_MESSAGES.START_GAME);
-    }
-
     /**
      * store the directions given to the snake
      */
-    const COMMAND_STACK = (initCommand => {
+    COMMAND_STACK = (initCommand => {
         const commands = [];
         if (initCommand) {
             commands.push(initCommand);
@@ -378,187 +374,9 @@ const PLAY_SNAKE = function () {
         }
     });
 
-    const { createEatableItem, getNextEatablePosition } = Eatable(UTILS);
-    const { Snake } = SnakeModule(UTILS);
+    const { PlaySnake } = GameModule(UTILS);
 
-    class PlaySnakeGame {
-        constructor(arena) {
-            this.intervals = [];
-            this.timers = [];
-            this._snake;
-            this._snakeFood;
-            this._snakeBonusFood;
-            this.snakeDirection;
-            this.arena = arena;
-            this.snakeSpeed = 20;
-            this._speedBonus;
-        }
-
-        getSnake() {
-            if (this._snake) {
-                return this._snake;
-            }
-            const { direction, position: { x, y } } = COMMAND_STACK.getFirst();
-            this.snakeDirection = direction;
-            this._snake = Snake(
-                this.arena,
-                x,
-                y,
-                this.snakeDirection,
-                this.snakeSpeed
-            );
-            return this._snake;
-        }
-
-        getSpeedBonusFood() {
-            if (this._speedBonus) {
-                return this._speedBonus;
-            }
-            this._speedBonus = createEatableItem(this.arena, -10, -10, 'speedBonus');
-            return this._speedBonus;
-        }
-
-        getSnakeFood() {
-            if (this._snakeFood) {
-                return this._snakeFood;
-            }
-            const { x, y } = getNextEatablePosition(
-                UTILS.getArenaConfig().eatables.basicFood.limits,
-                UTILS.getArenaConfig().eatables.basicFood.size
-            );
-            this._snakeFood = createEatableItem(this.arena, x, y, 'basicFood');
-            return this._snakeFood;
-        }
-
-        getSnakeBonusFood() {
-            if (this._snakeBonusFood) {
-                return this._snakeBonusFood;
-            }
-            this._snakeBonusFood = createEatableItem(this.arena, -10, -10, 'bonusFood');
-            return this._snakeBonusFood;
-        }
-
-        start() {
-            try {
-                this.getSnake();
-
-                const food = this.getSnakeFood();
-                setTimeout(UTILS.getArenaConfig().eatables.basicFood.startAfter * 1000, food);
-
-                const bonusFood = this.getSnakeBonusFood();
-                this.intervals.push(bonusFood.startInterval());
-
-                const speedBonusFood = this.getSpeedBonusFood();
-                this.intervals.push(speedBonusFood.startInterval());
-
-                this.setButtonListeners();
-
-                this.intervals.push(this.getSnake().startSnake());
-            } catch (error) {
-                UTILS.showAlert(ERROR_MESSAGES.START_GAME);
-            }
-        }
-
-        pause() {
-            UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-            UTILS.getWindow().clearInterval(this.getSnakeBonusFood().intervalId);
-            PAUSE_BUTTON.setAttribute('disabled', 'true');
-            if (PLAY_BUTTON.hasAttribute('disabled')) {
-                PLAY_BUTTON.removeAttribute('disabled');
-            }
-        }
-
-        resume() {
-            this.getSnake().startSnake();
-            this.getSnakeBonusFood().startInterval();
-            PLAY_BUTTON.setAttribute('disabled', 'true');
-            if (PAUSE_BUTTON.hasAttribute('disabled')) {
-                PAUSE_BUTTON.removeAttribute('disabled');
-            }
-        }
-
-        stop() {
-            UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-            UTILS.getWindow().clearInterval(this.getSnakeBonusFood().intervalId);
-            UTILS.getWindow().clearInterval(this.getSpeedBonusFood().intervalId);
-            this._snake = null;
-            this._snakeFood = null;
-            this._snakeBonusFood = null;
-            this._speedBonus = null;
-            this._speedBonus = null;
-            UTILS.getWindow().alert('GAME OVER\nYou Scored ' + this.getScore() + ' points.');
-        }
-
-        /**
-         * 
-         * @param {number} direction the new direction received
-         */
-        handleSnakeDirectionChange(direction) {
-            if (UTILS.getArenaConfig().supportedKeys.indexOf(direction) === -1) {
-                return;
-            }
-            /**
-             * the new direction should not be the current direction 
-             * or the opposite direction.
-             */
-            if (this.getSnake().currentDirection == direction ||
-                direction == UTILS.getArenaConfig()
-                    .keyConfig[String(this.getSnake().currentDirection)].reverse) {
-                return;
-            }
-            this.snakeDirection = direction;
-            this.getSnake().currentDirection = this.snakeDirection;
-            COMMAND_STACK.add({
-                id: Date.now(),
-                direction,
-                position: {
-                    x: this.getSnake().head.x,
-                    y: this.getSnake().head.y
-                }
-            });
-        }
-
-        setButtonListeners() {
-            UTILS.getWindow().addEventListener('unload', this.stop);
-            UTILS.getDocument().addEventListener('keydown', event => {
-                if (UTILS.getArenaConfig().supportedKeys.indexOf(event.keyCode) === -1) {
-                    return;
-                }
-                UTILS.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: event.keyCode });
-            });
-        }
-
-        getScore() {
-            return parseInt(SCORE_BOARD.innerHTML);
-        }
-
-        updateScore(points) {
-            SCORE_BOARD.innerHTML = +SCORE_BOARD.innerHTML + points;
-            return parseInt(SCORE_BOARD.innerHTML);
-        }
-
-        increaseSnakeSpeed() {
-            // stop current movement
-            UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-
-            // start with new speed
-            this.intervals.push(
-                this.getSnake().startSnake(
-                    this.getSnake().speed / 4
-                )
-            );
-
-            // revert to normal speed after some time
-            setTimeout(() => {
-                UTILS.getWindow().clearInterval(this.getSnake().intervalId);
-                this.intervals.push(
-                    this.getSnake().startSnake()
-                );
-            }, UTILS.getArenaConfig().eatables.speedBonus.speedDuration * 1000);
-        }
-    }
-
-    game = new PlaySnakeGame(SNAKE_ARENA);
+    game = new PlaySnake();
     gameEvents.init(game);
     game.start();
 };
