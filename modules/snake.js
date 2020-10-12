@@ -158,7 +158,7 @@ export default function (utils) {
                 }
             },
             isEatingFood: function () {
-                const food = utils.getSnakeFood();
+                const food = utils.getGame().getSnakeFood();
                 const { x: foodX, y: foodY } = food;
                 if (this.head.x < foodX
                     && foodX < this.head.x2
@@ -170,7 +170,7 @@ export default function (utils) {
             },
             isEatingBonusFood: function () {
                 const head = this.head;
-                const { x: bonusFoodX, y: bonusFoodY } = utils.getSnakeBonusFood();
+                const { x: bonusFoodX, y: bonusFoodY } = utils.getGame().getSnakeBonusFood();
                 let x1 = bonusFoodX - bonusFoodSize - 1;
                 let x2 = bonusFoodX + bonusFoodSize - 1;
                 let y1 = bonusFoodY - bonusFoodSize - 1;
@@ -181,8 +181,8 @@ export default function (utils) {
                 return false;
             },
             isEatingSpeedBonus: function () {
-                const speedBonus = utils.getSpeedBonus();
-                const { x, y } = speedBonus;
+                const _speed_bonus = utils.getGame().getSpeedBonusFood();
+                const { x, y } = _speed_bonus;
                 if (this.head.x < x
                     && x < this.head.x2
                     && this.head.y < y
@@ -208,14 +208,23 @@ export default function (utils) {
                 const isEatingBonusFood = this.isEatingBonusFood();
                 const isEatingSpeedBonus = this.isEatingSpeedBonus();
                 if (isEatingFood) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSnakeFood());
+                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getSnakeFood());
                 }
                 if (isEatingSpeedBonus) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSpeedBonus());
-                    utils.getGameEvents().emit('USE_SPEED_BONUS', utils.getSpeedBonus());
+                    utils.getGameEvents().emit(
+                        'EATABLE_CONSUMED',
+                        utils.getGame().getSpeedBonusFood()
+                    );
+                    utils.getGameEvents().emit(
+                        'USE_SPEED_BONUS',
+                        utils.getGame().getSpeedBonusFood()
+                    );
                 }
                 if (isEatingBonusFood) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getSnakeBonusFood());
+                    utils.getGameEvents().emit(
+                        'EATABLE_CONSUMED',
+                        utils.getGame().getSnakeBonusFood()
+                    );
                 }
                 this.moveAllParts(isEatingFood);
             },
@@ -344,7 +353,7 @@ export default function (utils) {
                 return this.y + (snakeWidth - 1);
             },
             isTail: function () {
-                return id === utils.getSnake().tail.id;
+                return id === utils.getGame().getSnake().tail.id;
             },
             /**
              * method calculates the next coordinates for a part on each step
