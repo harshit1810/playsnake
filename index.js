@@ -24,9 +24,16 @@ const PLAY_SNAKE = function () {
 
     const snakeWidth = 14;
 
+    const eatableRadius = snakeWidth / 2;
+
     const limits = {
         x: ARENA_WIDTH - borderWidth,
         y: ARENA_HEIGHT - borderWidth
+    };
+
+    const eatablePositionLimits = {
+        x: limits.x - snakeWidth,
+        y: limits.y - snakeWidth
     };
 
     const CONFIG_ARENA = {
@@ -92,11 +99,8 @@ const PLAY_SNAKE = function () {
                 appearDuration: null,
                 startAfter: 0,
                 elemType: 'circle',
-                size: 5,
-                limits: {
-                    x: limits.x - snakeWidth,
-                    y: limits.y - snakeWidth
-                },
+                size: eatableRadius,
+                limits: eatablePositionLimits,
                 isIntervalBased: false,
                 code: 'basicFood'
             },
@@ -109,11 +113,8 @@ const PLAY_SNAKE = function () {
                 appearDuration: 10,
                 startAfter: 30,
                 elemType: 'circle',
-                size: 15,
-                limits: {
-                    x: limits.x - (snakeWidth * 2),
-                    y: limits.y - (snakeWidth * 2)
-                },
+                size: eatableRadius,
+                limits: eatablePositionLimits,
                 isIntervalBased: true,
                 code: 'bonusFood'
             },
@@ -126,12 +127,9 @@ const PLAY_SNAKE = function () {
                 appearDuration: 10,
                 startAfter: 30,
                 elemType: 'circle',
-                size: 5,
+                size: eatableRadius,
                 speedDuration: 10,
-                limits: {
-                    x: limits.x - snakeWidth,
-                    y: limits.y - snakeWidth
-                },
+                limits: eatablePositionLimits,
                 isIntervalBased: true,
                 code: 'speedBonus'
             }
