@@ -22,7 +22,7 @@ const PLAY_SNAKE = function () {
 
     const borderWidth = 1;
 
-    const snakeWidth = 15;
+    const snakeWidth = 14;
 
     const limits = {
         x: ARENA_WIDTH - borderWidth,
@@ -75,7 +75,7 @@ const PLAY_SNAKE = function () {
         },
         snake: {
             id: 'the-snake',
-            elemType: 'rect',
+            elemType: 'circle',
             width: snakeWidth,
             color: 'black',
             length: 1,
@@ -272,10 +272,11 @@ const PLAY_SNAKE = function () {
             return gameEvents;
         },
         /**
-         * returns new coordinates if the snake part is going out of bounds.
-         * 
-         * @param {number} direction the current direction of the snake part.
+         * @param {number} direction the current direction of the object.
          * @param {object} position coordinates of the next step.
+         * @param {number} position.x
+         * @param {number} position.y
+         * @returns {Object} new coordinates if an object is going out of bounds.
          */
         checkBoundaryPosition(direction, position) {
             const { borderWidth, limits } = this.getArenaConfig();
