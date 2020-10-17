@@ -165,10 +165,7 @@ export default function(utils) {
             utils.getDirectionCommands().add({
                 id: Date.now(),
                 direction,
-                position: {
-                    x: this.getSnake().head.x,
-                    y: this.getSnake().head.y
-                }
+                position: this.getSnake().head.getCenter()
             });
         }
 

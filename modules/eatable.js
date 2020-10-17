@@ -132,11 +132,11 @@ export default function (utils) {
     function getNextEatablePosition(limits, foodSize) {
         function getRandomX() {
             return Math.floor(Math.random() * (limits.x - foodSize)) +
-                utils.getArenaConfig().borderWidth + 1;
+                config.borderWidth + 1;
         }
         function getRandomY() {
             return Math.floor(Math.random() * (limits.y - foodSize)) +
-                utils.getArenaConfig().borderWidth + 1;
+                config.borderWidth + 1;
         }
         let _x, _y;
         do {
