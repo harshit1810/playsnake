@@ -26,6 +26,8 @@ const PLAY_SNAKE = function () {
 
     const eatableRadius = snakeWidth / 2;
 
+    const defaultSnakeGrowLength = 1;
+
     const limits = {
         x: ARENA_WIDTH - borderWidth,
         y: ARENA_HEIGHT - borderWidth
@@ -102,7 +104,9 @@ const PLAY_SNAKE = function () {
                 size: eatableRadius,
                 limits: eatablePositionLimits,
                 isIntervalBased: false,
-                code: 'basicFood'
+                code: 'basicFood',
+                growSnakeIfConsumed: true,
+                growSnakeByLength: defaultSnakeGrowLength
             },
             bonusFood: {
                 id: 'the-snake-bonus-food',
@@ -116,8 +120,10 @@ const PLAY_SNAKE = function () {
                 size: eatableRadius,
                 limits: eatablePositionLimits,
                 isIntervalBased: true,
-                code: 'bonusFood'
-            },
+                code: 'bonusFood',
+                growSnakeIfConsumed: false,
+                growSnakeByLength: defaultSnakeGrowLength + 1
+            }, 
             speedBonus: {
                 id: 'the-speed-bonus',
                 color: '#ffe205',
@@ -131,50 +137,12 @@ const PLAY_SNAKE = function () {
                 speedDuration: 10,
                 limits: eatablePositionLimits,
                 isIntervalBased: true,
-                code: 'speedBonus'
+                code: 'speedBonus',
+                growSnakeIfConsumed: false,
+                growSnakeByLength: 0
             }
         }
     };
-
-    class Subject {
-        constructor(topic, observers = []) {
-            // list of snake parts
-            this.observers = observers;
-            this.topic = topic;
-        }
-        addObserver(obsrv) {
-            if (!obsrv || !obsrv.element || !obsrv.element.id) {
-                return;
-            }
-            this.observers.push(obsrv);
-        }
-        removeObserver(obsrv) {
-            this.observers.splice(
-                this.observers.findIndex(obj => obj.element.id === obsrv.element.id), 1
-            );
-        }
-        notify() {
-            this.observers.forEach(obsrv => {
-                // call the topic for each snake part
-                obsrv[this.topic]();
-            });
-        }
-    }
-    class SnakeNotifier extends Subject {
-        constructor() {
-            super('nextXY');
-        }
-        notify(foodEaten) {
-            super.notify();
-            if (!foodEaten) {
-                return;
-            }
-            const food = UTILS.getGame().getSnakeFood();
-            UTILS.getGame().getSnake().grow(food.drop.bind(food));
-        }
-    }
-
-    const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
 
     const SNAKE_DIRECTION_MAP = {};
 
@@ -211,9 +179,6 @@ const PLAY_SNAKE = function () {
         },
         pixelify: function (number) {
             return String(number).trim().concat(this.RENDER_UNIT);
-        },
-        getPositionUpdater: function () {
-            return SNAKE_PART_POSITION_UPDATER;
         },
         getStyleString: function (obj = {}) {
             return Object.keys(obj).reduce((str, key) => {

@@ -19,9 +19,10 @@ export default function (utils) {
         let length = 1;
         let color = snakeColor;
         let currentDirection = direction;
-        let head = createSnakePart(arena, startX, startY, currentDirection, length, color);
+        let head = createSnakePart(arena, startX, startY, currentDirection, length);
         let tail = head;
         let intervalId;
+        const bodyParts = [ head ];
 
         return {
             get arena() {
@@ -46,7 +47,9 @@ export default function (utils) {
                 return tail;
             },
             set tail(t) {
-                return tail = t;
+                tail = t;
+                this.length += 1;
+                return tail;
             },
             get intervalId() {
                 return intervalId;
@@ -71,6 +74,9 @@ export default function (utils) {
             },
             set color(c) {
                 color = c;
+            },
+            get bodyParts() {
+                return bodyParts;
             },
             UP: function () {
                 this.move(0, snakeStep * -1);
@@ -123,26 +129,21 @@ export default function (utils) {
                 }
                 return { x: _x, y: _y };
             },
-            /**
-             * adds a snake part at the tail
-             * @param {function} next a callback
-             * @returns undefined
-             */
-            grow: function (next) {
+            grow: function (growLength = 1) {
                 const self = this;
-                const { x, y } = self.getPositionOfNewPart();
-                const newPart = createSnakePart(
-                    self.arena, x, y, self.tail.direction, self.length + 1, self.tail.color
-                );
-                self.length += 1;
-                self.tail.next = newPart;
-                newPart.prev = self.tail;
-                self.tail = newPart;
-                utils.getPositionUpdater().addObserver(self.tail);
-                // drop food pellet
-                if (typeof next === 'function') {
-                    next();
+                for (let count = 1; count <= growLength; count++) {
+                    const { x, y } = self.getPositionOfNewPart();
+                    self.bodyParts.push(
+                        createSnakePart(
+                            self.arena, x, y, self.tail.direction, self.length + 1
+                        )
+                    );
+                    const newPart = self.bodyParts[self.bodyParts.length - 1];
+                    self.tail.next = newPart;
+                    newPart.prev = self.tail;
+                    self.tail = newPart;
                 }
+                utils.getGame().getBasicFood().drop();
             },
             changeColor: function (colour) {
                 let _part = this.head;
@@ -158,7 +159,7 @@ export default function (utils) {
                 }
             },
             isEatingFood: function () {
-                const food = utils.getGame().getSnakeFood();
+                const food = utils.getGame().getBasicFood();
                 const { x: foodX, y: foodY } = food;
                 if (this.head.x < foodX
                     && foodX < this.head.x2
@@ -204,13 +205,13 @@ export default function (utils) {
                 });
                 _part.x = nextX;
                 _part.y = nextY;
-                const isEatingFood = this.isEatingFood();
+                const isEatingBasicFood = this.isEatingFood();
                 const isEatingBonusFood = this.isEatingBonusFood();
                 const isEatingSpeedBonus = this.isEatingSpeedBonus();
-                if (isEatingFood) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getSnakeFood());
-                }
-                if (isEatingSpeedBonus) {
+                this.moveAllParts();
+                if (isEatingBasicFood) {
+                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getBasicFood());
+                } else if (isEatingSpeedBonus) {
                     utils.getGameEvents().emit(
                         'EATABLE_CONSUMED',
                         utils.getGame().getSpeedBonusFood()
@@ -219,20 +220,23 @@ export default function (utils) {
                         'USE_SPEED_BONUS',
                         utils.getGame().getSpeedBonusFood()
                     );
-                }
-                if (isEatingBonusFood) {
+                } else if (isEatingBonusFood) {
                     utils.getGameEvents().emit(
                         'EATABLE_CONSUMED',
                         utils.getGame().getSnakeBonusFood()
                     );
                 }
-                this.moveAllParts(isEatingFood);
             },
-            moveAllParts: function (foodEaten) {
+            moveAllParts: function () {
                 if (this.length === 1) {
                     utils.getDirectionCommands().clear();
                 }
-                utils.getPositionUpdater().notify(foodEaten);
+                const parts = this.bodyParts;
+                for (let i = 0 ; i < parts.length ; i++) {
+                    if (!parts[i].isHead) {
+                        parts[i].nextXY();
+                    }
+                }
             },
             /**
              * @returns {boolean} indicates wether the snake is going to eat itself
@@ -286,8 +290,9 @@ export default function (utils) {
         };
     }
 
-    function createSnakePart(arena, x, y, dirx, partNumber, color) {
+    function createSnakePart(arena, x, y, dirx, partNumber, color = snakeColor) {
 
+        const isHead = partNumber === 1;
         const id = `${snakeId}-part${partNumber}`;
         const radius = snakeWidth / 2;
         let direction = dirx;
@@ -297,10 +302,6 @@ export default function (utils) {
             elementType: snakeElementType,
             attributes: {
                 id,
-                // x,
-                // y,
-                // rx: snakeWidth,
-                // ry: snakeWidth,
                 cx,
                 cy,
                 r: radius,
@@ -310,8 +311,6 @@ export default function (utils) {
             },
             parent: arena
         });
-        // let [x, y] = [cx - (radius-1), cy - (radius-1)];
-        // let [x2, y2] = [cx + (radius - 1), cy + (radius - 1)];
         let next = null;
         let prev = null;
 
@@ -337,43 +336,39 @@ export default function (utils) {
             set prev(element) {
                 prev = element;
             },
-            getCenter: function() {
-                return {
-                    x: parseInt(this.element.getAttribute('cx')),
-                    y: parseInt(this.element.getAttribute('cy'))
-                };
-            },
-            isSnakeHead: function () {
-                return id === snakeId;
-            },
             get x() {
-                // return parseInt(element.getAttribute('x'));
                 return this.getCenter().x - (radius - 1);
             },
             set x(value) {
                 element.setAttribute('cx', value + (radius-1));
             },
             get y() {
-                // return parseInt(element.getAttribute('y'));
                 return this.getCenter().y - (radius - 1);
             },
             set y(value) {
                 element.setAttribute('cy', value + (radius - 1));
             },
             get x2() {
-                // return this.x + (snakeWidth - 1);
                 return this.getCenter().x + (radius - 1);
             },
             get y2() {
-                // return this.y + (snakeWidth - 1);
                 return this.getCenter().y + (radius - 1);
+            },
+            get isHead() {
+                return isHead;
             },
             isTail: function () {
                 return id === utils.getGame().getSnake().tail.id;
             },
+            getCenter: function() {
+                return {
+                    x: parseInt(this.element.getAttribute('cx')),
+                    y: parseInt(this.element.getAttribute('cy'))
+                };
+            },
             /**
-             * method calculates the next coordinates for a part on each step
-             * triggered for all new parts
+             * calculate the next coordinates for a part on each step.
+             * is triggered for all parts
              */
             nextXY: function () {
                 const self = this;

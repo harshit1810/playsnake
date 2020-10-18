@@ -6,6 +6,7 @@ export default function(utils) {
     
     const { createEatableItem, getNextEatablePosition } = Eatable(utils);
     const { Snake } = SnakeModule(utils);
+    const arenaConfig = utils.getArenaConfig();
     
     class PlaySnake {
         constructor() {
@@ -24,7 +25,6 @@ export default function(utils) {
             this._snakeBonusFood;
             this.snakeDirection;
             this.arena = SNAKE_ARENA;
-            this.snakeSpeed = 20;
             this._speedBonus;
             this.gameControls = {
                 playButton: PLAY_BUTTON,
@@ -44,7 +44,7 @@ export default function(utils) {
                 x,
                 y,
                 this.snakeDirection,
-                this.snakeSpeed
+                arenaConfig.snake.speed
             );
             return this._snake;
         }
@@ -57,24 +57,24 @@ export default function(utils) {
                 this.arena, 
                 -10, 
                 -10, 
-                utils.getArenaConfig().eatables.speedBonus.code
+                arenaConfig.eatables.speedBonus.code
             );
             return this._speedBonus;
         }
 
-        getSnakeFood() {
+        getBasicFood() {
             if (this._snakeFood) {
                 return this._snakeFood;
             }
             const { x, y } = getNextEatablePosition(
-                utils.getArenaConfig().eatables.basicFood.limits,
-                utils.getArenaConfig().eatables.basicFood.size
+                arenaConfig.eatables.basicFood.limits,
+                arenaConfig.eatables.basicFood.size
             );
             this._snakeFood = createEatableItem(
                 this.arena,
                 x,
                 y,
-                utils.getArenaConfig().eatables.basicFood.code
+                arenaConfig.eatables.basicFood.code
             );
             return this._snakeFood;
         }
@@ -87,7 +87,7 @@ export default function(utils) {
                 this.arena,
                 -10, 
                 -10, 
-                utils.getArenaConfig().eatables.bonusFood.code
+                arenaConfig.eatables.bonusFood.code
             );
             return this._snakeBonusFood;
         }
@@ -96,8 +96,8 @@ export default function(utils) {
             try {
                 this.getSnake();
 
-                const food = this.getSnakeFood();
-                setTimeout(utils.getArenaConfig().eatables.basicFood.startAfter * 1000, food);
+                const food = this.getBasicFood();
+                setTimeout(arenaConfig.eatables.basicFood.startAfter * 1000, food);
 
                 const bonusFood = this.getSnakeBonusFood();
                 this.intervals.push(bonusFood.startInterval());
@@ -111,6 +111,13 @@ export default function(utils) {
             } catch (error) {
                 utils.showAlert(utils.getErrorMessages().START_GAME);
             }
+        }
+
+        growSnake(eatable) {
+            if (!eatable || !eatable.growSnakeIfConsumed || !this._snake) {
+                return;
+            }
+            this.getSnake().grow(eatable.growSnakeByLength);
         }
 
         pause() {
@@ -148,7 +155,7 @@ export default function(utils) {
          * @param {number} direction the new direction received
          */
         handleSnakeDirectionChange(direction) {
-            if (utils.getArenaConfig().supportedKeys.indexOf(direction) === -1) {
+            if (arenaConfig.supportedKeys.indexOf(direction) === -1) {
                 return;
             }
             /**
@@ -156,7 +163,7 @@ export default function(utils) {
              * or the opposite direction.
              */
             if (this.getSnake().currentDirection == direction ||
-                direction == utils.getArenaConfig()
+                direction == arenaConfig
                     .keyConfig[String(this.getSnake().currentDirection)].reverse) {
                 return;
             }
@@ -172,7 +179,7 @@ export default function(utils) {
         setButtonListeners() {
             utils.getWindow().addEventListener('unload', this.stop);
             utils.getDocument().addEventListener('keydown', event => {
-                if (utils.getArenaConfig().supportedKeys.indexOf(event.keyCode) === -1) {
+                if (arenaConfig.supportedKeys.indexOf(event.keyCode) === -1) {
                     return;
                 }
                 utils.getGameEvents().emit('SNAKE_DIRECTION_CHANGE', { direction: event.keyCode });
@@ -196,7 +203,7 @@ export default function(utils) {
             // start with new speed
             this.intervals.push(
                 this.getSnake().startSnake(
-                    this.getSnake().speed / 4
+                    Math.floor(this.getSnake().speed / 4)
                 )
             );
 
@@ -206,7 +213,7 @@ export default function(utils) {
                 this.intervals.push(
                     this.getSnake().startSnake()
                 );
-            }, utils.getArenaConfig().eatables.speedBonus.speedDuration * 1000);
+            }, arenaConfig.eatables.speedBonus.speedDuration * 1000);
         }
     }
 

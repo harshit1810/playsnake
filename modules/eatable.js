@@ -20,7 +20,9 @@ export default function (utils) {
             isIntervalBased,
             startAfter,
             points,
-            appearDuration
+            appearDuration,
+            growSnakeIfConsumed,
+            growSnakeByLength
         } = config.eatables[code];
 
         const element = utils.createHTMLElement({
@@ -94,6 +96,12 @@ export default function (utils) {
             },
             get appearDuration() {
                 return appearDuration;
+            },
+            get growSnakeIfConsumed() {
+                return growSnakeIfConsumed;
+            },
+            get growSnakeByLength() {
+                return growSnakeByLength;
             },
             startInterval: function () {
                 if (!this.isIntervalBased) {

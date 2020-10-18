@@ -14,9 +14,15 @@ export default function () {
         EATABLE_CONSUMED: [
             eatable => {
                 eatable.hide();
-                if (typeof eatable.points === 'number') {
-                    emitEvent('UPDATE_SCORE', eatable.points);
+            },
+            eatable => {
+                if (typeof eatable.points !== 'number') {
+                    return;
                 }
+                emitEvent('UPDATE_SCORE', eatable.points);
+            },
+            eatable => {
+                gameInstance.growSnake(eatable)
             }
         ],
         UPDATE_SCORE: [

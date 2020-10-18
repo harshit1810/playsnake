@@ -3,3 +3,4 @@ node_modules/
 *dev.min.js*
 .DS_Store
 docs/**.map
+docs/**.log
