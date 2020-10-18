@@ -1,5 +1,5 @@
 export default function (utils) {
-    const config = utils.getArenaConfig();
+    const config = utils.getConfig();
     
     const {
         elemType: snakeElementType,
@@ -295,7 +295,6 @@ export default function (utils) {
         const isHead = partNumber === 1;
         const id = `${snakeId}-part${partNumber}`;
         const radius = snakeWidth / 2;
-        let direction = dirx;
         const [cx, cy] = [x + (radius - 1), y + (radius - 1)];
         const element = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
@@ -311,8 +310,9 @@ export default function (utils) {
             },
             parent: arena
         });
-        let next = null;
-        let prev = null;
+        let direction = dirx, 
+            next = null,
+            prev = null;
 
         return {
             id,

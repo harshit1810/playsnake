@@ -1,45 +1,44 @@
 import GameModule from './modules/game';
 import GameEventHandlerModule from './modules/game-event-handler';
+import InitUIModule from './modules/init-ui';
 
 const PLAY_SNAKE = function () {
-    if (!window) {
-        return;
-    }
-    const MAX_HEIGHT_WIDTH = 500;
-    const ARENA_WIDTH = Math.floor(window.innerWidth) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerWidth)
-        : MAX_HEIGHT_WIDTH;
-    const ARENA_HEIGHT = Math.floor(window.innerHeight) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerHeight)
-        : MAX_HEIGHT_WIDTH;
+
+    const { onWindowLoad } = InitUIModule();
+    const ARENA_ID = 'play-snake-arena';
+    const {
+        ARENA_WIDTH,
+        ARENA_HEIGHT
+    } = onWindowLoad({
+        arenaMaxSize: 500,
+        arenaId: ARENA_ID
+    });
+    
+
     const ERROR_MESSAGES = {
         DEFAULT: 'Sorry.',
         SETUP_GAME: 'Failed to setup',
-        START_GAME: 'Unable To Start The Game'
+        START_GAME: 'Unable To Start The Game',
+        INACTIVITY_TIMEOUT: 'It seems you are not playing'
     };
-
-    const gameEvents = GameEventHandlerModule();
 
     const borderWidth = 1;
 
     const snakeWidth = 14;
-
+    const snakeSpeed = 12;
     const eatableRadius = snakeWidth / 2;
-
     const defaultSnakeGrowLength = 1;
-
     const limits = {
         x: ARENA_WIDTH - borderWidth,
         y: ARENA_HEIGHT - borderWidth
     };
-
     const eatablePositionLimits = {
-        x: limits.x - snakeWidth,
-        y: limits.y - snakeWidth
+        x: limits.x - (snakeWidth * 2),
+        y: limits.y - (snakeWidth * 2)
     };
 
-    const CONFIG_ARENA = {
-        id: 'play-snake-arena',
+    const CONFIG = {
+        id: ARENA_ID,
         width: ARENA_WIDTH,
         height: ARENA_HEIGHT,
         borderColor: 'black',
@@ -72,6 +71,14 @@ const PLAY_SNAKE = function () {
                 reverse: 38
             }
         },
+        game: {
+            inactivityTimeout: 300,
+            state: {
+                paused: 0,
+                stopped: 1,
+                playing: 2
+            }
+        },
         pauseButton: {
             id: 'pause-play-snake',
             text: 'Pause',
@@ -88,8 +95,9 @@ const PLAY_SNAKE = function () {
             width: snakeWidth,
             color: 'black',
             length: 1,
-            speed: 12,
-            step: 1
+            speed: snakeSpeed,
+            step: 1,
+            turboSpeed: snakeSpeed / 4
         },
         eatables: {
             basicFood: {
@@ -127,7 +135,7 @@ const PLAY_SNAKE = function () {
             speedBonus: {
                 id: 'the-speed-bonus',
                 color: '#ffe205',
-                description: 'Extra speed',
+                description: 'Turbo boost',
                 showInLegend: true,
                 points: 0,
                 appearDuration: 10,
@@ -162,11 +170,11 @@ const PLAY_SNAKE = function () {
         getDocumentBody: function () {
             return this.getDocument().body;
         },
-        showAlert: function (message) {
+        windowAlert: function (message) {
             this.getWindow().alert(message);
         },
-        getArenaConfig: function () {
-            return CONFIG_ARENA;
+        getConfig: function () {
+            return CONFIG;
         },
         getGame: function () {
             return game;
@@ -242,8 +250,8 @@ const PLAY_SNAKE = function () {
          * @returns {Object} new coordinates if an object is going out of bounds.
          */
         checkBoundaryPosition(direction, position) {
-            const { borderWidth, limits } = this.getArenaConfig();
-            const snakeWidth = this.getArenaConfig().snake.width;
+            const { borderWidth, limits } = this.getConfig();
+            const snakeWidth = this.getConfig().snake.width;
             switch (direction) {
             case 37:
                 if (position.x < borderWidth) {
@@ -331,18 +339,21 @@ const PLAY_SNAKE = function () {
         };
     })({
         id: Date.now(),
-        direction: UTILS.getArenaConfig().supportedKeys[2],
+        direction: UTILS.getConfig().supportedKeys[2],
         position: {
-            x: UTILS.getArenaConfig().arena.center.x,
-            y: UTILS.getArenaConfig().arena.center.y
+            x: UTILS.getConfig().arena.center.x,
+            y: UTILS.getConfig().arena.center.y
         }
     });
 
+    const gameEvents = GameEventHandlerModule();
     const { PlaySnake } = GameModule(UTILS);
 
-    game = new PlaySnake();
+    game = PlaySnake();
     gameEvents.init(game);
     game.start();
 };
 
-PLAY_SNAKE();
+window.onload = function(){
+    PLAY_SNAKE();
+}

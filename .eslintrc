@@ -51,6 +51,7 @@
         "multiline-ternary": [
             "error",
             "always"
-        ]
+        ],
+        "no-unused-vars": "warn"
     }
 }

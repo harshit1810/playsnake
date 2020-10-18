@@ -1,6 +1,6 @@
 export default function (utils) {
 
-    const config = utils.getArenaConfig();
+    const config = utils.getConfig();
 
     const {
         width: snakeWidth
@@ -104,14 +104,15 @@ export default function (utils) {
                 return growSnakeByLength;
             },
             startInterval: function () {
-                if (!this.isIntervalBased) {
+                const self = this;
+                if (!self.isIntervalBased) {
                     return;
                 }
-                this.intervalId = setInterval(
-                    this.drop.bind(this),
-                    this.startAfter * 1000
+                self.intervalId = setInterval(
+                    self.drop.bind(self),
+                    self.startAfter * 1000
                 );
-                return this.intervalId;
+                return self.intervalId;
             },
             drop: function () {
                 const { x, y } = getNextEatablePosition(this.limits, this.size);
