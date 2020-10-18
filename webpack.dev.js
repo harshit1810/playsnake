@@ -1,5 +1,4 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ESLintPlugin = require('eslint-webpack-plugin');
 
 module.exports = {
@@ -7,12 +6,6 @@ module.exports = {
     entry: './index.js',
     devtool: 'source-map',
     plugins: [
-        new HtmlWebpackPlugin({
-            title: 'PlaySnake',
-            meta: {
-                viewport: 'width=device-width, initial-scale=1, shrink-to-fit=no'
-            }
-        }),
         new ESLintPlugin({
             fix: true,
             failOnError: false,

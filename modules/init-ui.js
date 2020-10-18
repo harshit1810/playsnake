@@ -1,307 +1,341 @@
-export default function (utils) {
+export default function () {
 
-    const Styles = {
-        FlexRows: {
-            display: 'flex',
-            'flex-direction': 'column'
-        },
-        FlexCols: {
-            display: 'flex',
-            'flex-direction': 'row'
-        },
-        CapitalizeText: {
-            'text-transform': 'capitalize'
-        }
+    const onWindowLoad = function (arg) {
+        const {
+            arenaId,
+            arenaContainerId
+        } = arg;
+
+        const unpixelify = str => Math.floor(String(str).trim().split('px')[0]);
+        const arenaContainer = document.getElementById(arenaContainerId);
+        const arena = document.getElementById(arenaId);
+
+        const arenaMaxWidth = unpixelify(window.getComputedStyle(arenaContainer).maxWidth);
+        const availableWidth = unpixelify(window.getComputedStyle(arenaContainer).width);
+
+        const ARENA_WIDTH = availableWidth > arenaMaxWidth
+            ? arenaMaxWidth
+            : availableWidth;
+        const ARENA_HEIGHT = ARENA_WIDTH;
+
+        arena.setAttribute('width', ARENA_WIDTH);
+        arena.setAttribute('height', ARENA_HEIGHT);
+
+        return {
+            ARENA_WIDTH,
+            ARENA_HEIGHT
+        };
     };
-    const directionMap = Object.keys(utils.getArenaConfig().directionMap)
-        .reduce((acc, keyCode) => {
-            const direction = utils.getArenaConfig().directionMap[keyCode];
-            acc[direction] = keyCode;
-            return acc;
-        }, {
-            UP: null,
-            DOWN: null,
-            RIGHT: null,
-            LEFT: null
-        });
 
-    utils.getDocumentBody().style.fontFamily = 'Candara';
-    try {
-        const gameControlDiv = utils.createHTMLElement({
-            elementType: 'div',
-            attributes: {
-                style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
-                    'flex-wrap': 'wrap',
-                    'justify-content': 'flex-start',
-                    width: utils.pixelify(utils.getArenaConfig().width),
-                    padding: '1% 0%'
-                }))
-            }
-        });
-
-        const styleString = utils.getStyleString({
-            padding: '2% 2%',
-            'border-radius': utils.pixelify(5),
-            flex: '0 1 20%',
-            'text-align': 'center',
-            'align-self': 'flex-end'
-        });
-
-        const PAUSE_BUTTON = (() => {
-            const btn = utils.createHTMLElement({
-                elementType: 'button',
-                parent: gameControlDiv,
-                innerHTML: utils.getArenaConfig().pauseButton.text,
-                attributes: {
-                    id: utils.getArenaConfig().pauseButton.id,
-                    style: `${styleString} order: ${utils.getArenaConfig().pauseButton.order}`
-                }
+    const setupGame = function (utils) {
+        const Styles = {
+            FlexCols: {
+                display: 'flex',
+                'flex-direction': 'row'
+            },
+            CapitalizeText: {
+                'text-transform': 'capitalize'
+            },
+            ZeroPixels: utils.pixelify(0),
+            Padding: utils.pixelify(5)
+        };
+        const getById = utils.getDocument().getElementById.bind(utils.getDocument());
+        const {
+            id: arenaId,
+            arenaContainerId,
+            directionMap,
+            pauseButton,
+            resumeButton,
+            quitButton,
+            game: {
+                scoreBoard,
+                infoContainerId,
+                legendContainerId
+            },
+            eatables = {}
+        } = utils.getConfig();
+        const dirMap = Object.keys(directionMap)
+            .reduce((acc, keyCode) => {
+                const direction = directionMap[keyCode];
+                acc[direction] = keyCode;
+                return acc;
+            }, {
+                UP: null,
+                DOWN: null,
+                RIGHT: null,
+                LEFT: null
             });
-            btn.addEventListener('click', () => {
+        const addClickHandler = (elem, cb, options = {}) => {
+            elem.addEventListener('click', cb);
+            elem.addEventListener('touchstart', cb, options);
+        };
+        const SNAKE_ARENA = getById(arenaId);
+
+        const PAUSE_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            addClickHandler(btn, () => {
                 utils.getGameEvents().emit('PAUSE_BUTTON_CLICKED');
             });
             return btn;
-        })();
+        })(pauseButton.id);
 
-        const PLAY_BUTTON = (() => {
-            const btn = utils.createHTMLElement({
-                elementType: 'button',
-                parent: gameControlDiv,
-                innerHTML: utils.getArenaConfig().resumeButton.text,
-                attributes: {
-                    id: utils.getArenaConfig().resumeButton.id,
-                    style: styleString + ' ' + utils.getStyleString({
-                        'margin-left': '2%',
-                        order: utils.getArenaConfig().resumeButton.order
-                    })
-                },
-                eventListeners: {
-                    click: utils.getArenaConfig().resumeButton.clickHandler
-                }
-            });
-            btn.addEventListener('click', () => {
+        const PLAY_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            addClickHandler(btn, () => {
                 utils.getGameEvents().emit('RESUME_BUTTON_CLICKED');
             });
             return btn;
-        })();
+        })(resumeButton.id);
 
-        const arenaContainer = (() => {
-            let initialTouchPos;
-            const elem = utils.createHTMLElement({
-                elementType: 'div',
-                attributes: {
-                    id: 'arena-container',
-                    style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
-                        'flex-wrap': 'wrap',
-                    }))
-                }
+        // eslint-disable-next-line no-unused-vars
+        const QUIT_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            addClickHandler(btn, () => {
+                utils.getGameEvents().emit('STOP_GAME');
             });
-            elem.addEventListener('touchstart', event => {
-                event.preventDefault();
-                if (event.touches && event.touches.length > 1) {
+            return btn;
+        })(quitButton.id);
+
+        // Create lengends about the game
+        (containerId => {
+            const _legend_container = getById(containerId);
+            // create legend keys
+            Object.keys(eatables).forEach(eatableName => {
+                const {
+                    description,
+                    showInLegend,
+                    color = 'white'
+                } = eatables[eatableName];
+                if (!showInLegend || !description) {
                     return;
                 }
-                const point = {};
-                if (event.targetTouches) {
-                    point.x = event.targetTouches[0].clientX;
-                    point.y = event.targetTouches[0].clientY;
+                const legend = utils.createHTMLElement({
+                    parent: _legend_container,
+                    elementType: 'div',
+                    attributes: {
+                        class: 'cols universal-padding',
+                        style: utils.getStyleString(Object.assign({}, {
+                            'align-items': 'center'
+                        }))
+                    }
+                });
+                utils.createHTMLElement({
+                    parent: legend,
+                    elementType: 'div',
+                    attributes: {
+                        style: utils.getStyleString({
+                            height: utils.pixelify(10),
+                            width: utils.pixelify(10),
+                            'background-color': color,
+                            'border-radius': utils.pixelify(5)
+                        })
+                    }
+                });
+                utils.createHTMLElement({
+                    parent: legend,
+                    elementType: 'span',
+                    innerHTML: description,
+                    attributes: {
+                        style: utils.getStyleString(Object.assign(
+                            {},
+                            Styles.CapitalizeText,
+                            {
+                                padding: `${Styles.ZeroPixels} ${utils.pixelify(2)}`
+                            })
+                        )
+                    }
+                });
+
+            });
+            return _legend_container;
+        })(legendContainerId);
+
+        // eslint-disable-next-line no-unused-vars
+        const arenaContainer = (sectionId => {
+            let initialTouchPos = {}, swipeRecorded = false;
+            const clearTouchMemory = event => {
+                event
+                    ? event.preventDefault()
+                    : undefined;
+                initialTouchPos = {};
+                swipeRecorded = false;
+            };
+            const elem = getById(sectionId);
+            const emit = direction => {
+                utils.getGameEvents().emit(
+                    'SNAKE_DIRECTION_CHANGE',
+                    { direction }
+                );
+                swipeRecorded = true;
+            }
+            // Handle swipe actions
+            elem.addEventListener('touchstart', event => {
+                event.preventDefault();
+                if (event.targetTouches && event.targetTouches.length > 0) {
+                    initialTouchPos.x = parseInt(event.targetTouches[0].clientX);
+                    initialTouchPos.y = parseInt(event.targetTouches[0].clientY);
                 }
-                initialTouchPos = point;
             }, true);
             elem.addEventListener('touchmove', event => {
                 event.preventDefault();
-            }, true);
-            elem.addEventListener('touchend', event => {
-                event.preventDefault();
-                const [x1, y1] = [parseInt(initialTouchPos.x), parseInt(initialTouchPos.y)];
-                initialTouchPos = null;
-                const touchList = event.changedTouches;
-                const lastTouch = touchList[0];
-                const [x2, y2] = [parseInt(lastTouch.clientX), parseInt(lastTouch.clientY)];
-                if (x1 === x2 && y1 === y2) {
-                    // did not swipe
+                if (swipeRecorded) {
                     return;
                 }
-                const xdistance = x2 - x1;
-                const ydistance = y2 - y1;
-                if (Math.abs(xdistance) === Math.abs(ydistance)) {
-                    // swiped diagonal
+                const { x: x1, y: y1 } = initialTouchPos;
+                initialTouchPos = {};
+                const { clientX, clientY } = event.changedTouches[0];
+                const [x2, y2] = [parseInt(clientX), parseInt(clientY)];
+                const [xdistance, ydistance] = [x2 - x1, y2 - y1];
+                // Do nothing if did not swipe or swiped diagonal
+                if ((x1 === x2 && y1 === y2) ||
+                    (Math.abs(xdistance) === Math.abs(ydistance))) {
                     return;
                 }
                 if (xdistance === 0) {
-                    if (ydistance > 0) {
-                        // swiped down
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.DOWN }
-                        );
-                        return;
-                    }
-                    // swiped up
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.UP }
-                    );
-                    return;
-
-                } else if (ydistance === 0) {
-                    if (xdistance > 0) {
-                        //swiped right
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.RIGHT }
-                        );
-                        return;
-                    }
-                    // swiped left
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.LEFT }
-                    );
-                    return;
+                    return (ydistance > 0)
+                        ? emit(dirMap.DOWN)
+                        : emit(dirMap.UP);
                 }
-
+                if (ydistance === 0) {
+                    return (xdistance > 0)
+                        ? emit(dirMap.RIGHT)
+                        : emit(dirMap.LEFT);
+                }
                 if (xdistance > 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.RIGHT }
-                    );
-                    // swiped right
-                    return;
+                    return emit(dirMap.RIGHT);
                 }
                 if (xdistance < 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.LEFT }
-                    );
-                    // swiped left
-                    return;
+                    return emit(dirMap.LEFT);
                 }
                 if (ydistance > 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.DOWN }
-                    );
-                    // swiped down
-                    return
+                    return emit(dirMap.DOWN);
                 }
                 if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction: directionMap.UP }
-                    );
-                    // swiped up
-                    return;
+                    return emit(dirMap.UP);
                 }
+                return;
             }, true);
-            elem.addEventListener('touchcancel', event => {
-                event.preventDefault();
-                initialTouchPos = null;
-            }, true);
+            elem.addEventListener('touchend', clearTouchMemory, true);
+            elem.addEventListener('touchcancel', clearTouchMemory, true);
             return elem;
-        })();
+        })(arenaContainerId);
 
-        const SNAKE_ARENA = utils.createHTMLElement({
-            elementNamespace: utils.getSvgNamespace(),
-            elementType: 'svg',
-            attributes: {
-                id: utils.getArenaConfig().id,
-                height: utils.getArenaConfig().height,
-                width: utils.getArenaConfig().width,
-                style: 'border: ' +
-                    utils.pixelify(utils.getArenaConfig().borderWidth) +
-                    ' solid ' +
-                    utils.getArenaConfig().borderColor
-            },
-            parent: arenaContainer
-        });
+        const SCORE_BOARD = getById(scoreBoard.id);
 
-        (() => {
-            const _legend_container = utils.createHTMLElement({
-                elementType: 'div',
-                parent: arenaContainer,
-                attributes: {
-                    id: 'legend-container',
-                    style: utils.getStyleString(Object.assign({}, Styles.FlexRows, {
-                        padding: `${utils.pixelify(2)} ${utils.pixelify(2)}`,
-                        'justify-content': 'flex-start'
-                    }))
-                }
-            });
-            // create legend keys
-            try {
-                const {
-                    eatables = {}
-                } = utils.getArenaConfig();
-                Object.keys(eatables).forEach(eatableName => {
-                    const { description, showInLegend, color = 'white' } = eatables[eatableName];
-                    if (!showInLegend || !description) {
+        const MODAL = ((sectionId, modalContentId, btn1Id, btn2Id, btnsContainerId) => {
+            const [section, button1, button2, modalContentSpace, btnsContainer] = [
+                sectionId, btn1Id, btn2Id, modalContentId, btnsContainerId
+            ].map(getById);
+            const createdElements = [];
+            const hideModal = () => {
+                section.style.display = 'none';
+                createdElements.forEach(e => e.remove());
+                button1.innerHTML = 'no';
+                button2.innerHTML = 'yes';
+                button1.style.display = 'block';
+                button2.style.display = 'block';
+            };
+            /**
+             * 
+             * @param {Object} config 
+             * @param {string[]=} config.elementIds
+             * @param {string|string[]=} config.texts
+             * @param {Object} config.btn1
+             * @param {string=} config.btn1.label
+             * @param {Function=} config.btn1.clickHandler
+             * @param {boolean} config.btn1.show
+             * @param {Object} config.btn2
+             * @param {string=} config.btn2.label
+             * @param {Function=} config.btn2.clickHandler
+             * @param {boolean} config.btn2.show
+             */
+            const showModal = config => {
+                let {
+                    elementIds = [],
+                    texts = [],
+                    btn1,
+                    btn2
+                } = config;
+                btn1 = btn1 || {};
+                btn2 = btn2 || {};
+                elementIds = Array.isArray(elementIds)
+                    ? elementIds
+                    : [elementIds];
+                texts = Array.isArray(texts)
+                    ? texts
+                    : [texts];
+                elementIds.forEach(id => {
+                    if (!id) {
                         return;
                     }
-                    const legend = utils.createHTMLElement({
-                        parent: _legend_container,
-                        elementType: 'div',
-                        attributes: {
-                            style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
-                                'margin-bottom': utils.pixelify(5),
-                                'align-items': 'center'
-                            }))
-                        }
-                    });
-                    utils.createHTMLElement({
-                        parent: legend,
-                        elementType: 'div',
-                        attributes: {
-                            style: utils.getStyleString({
-                                height: utils.pixelify(10),
-                                width: utils.pixelify(10),
-                                'background-color': color,
-                                'border-radius': utils.pixelify(5)
-                            })
-                        }
-                    });
-                    utils.createHTMLElement({
-                        parent: legend,
-                        elementType: 'span',
-                        innerHTML: description,
-                        attributes: {
-                            style: utils.getStyleString(Object.assign({}, Styles.CapitalizeText, {
-                                padding: `${utils.pixelify(0)} ${utils.pixelify(2)}`
-                            }))
-                        }
-                    });
-
+                    const _clone = getById(id).cloneNode(true);
+                    createdElements.push(_clone);
+                    modalContentSpace.insertBefore(_clone, btnsContainer);
                 });
-            } catch (e) {
-                utils.LOGGER.warn(`Failed while drawing legend: ${e}`);
-            }
-            return _legend_container;
-        })();
+                texts.forEach(t => createdElements.push(utils.createHTMLElement({
+                    elementType: 'p',
+                    parent: modalContentSpace,
+                    innerHTML: t,
+                    beforeElement: btnsContainer,
+                    attributes: {
+                        class: 'text-center'
+                    }
+                })));
+                button1.innerHTML = btn1.label
+                    ? btn1.label
+                    : button1.innerHTML;
+                button2.innerHTML = btn2.label
+                    ? btn2.label
+                    : button2.innerHTML;
+                button1.style.display = typeof btn1.show === 'boolean'
+                    ? btn1.show
+                        ? 'block'
+                        : 'none'
+                    : button1.style.display;
+                button2.style.display = typeof btn2.show === 'boolean'
+                    ? btn2.show
+                        ? 'block'
+                        : 'none'
+                    : button2.style.display;
+                if (typeof btn1.clickHandler === 'function') {
+                    addClickHandler(button1, btn1.clickHandler, { once: true });
+                }
+                if (typeof btn2.clickHandler === 'function') {
+                    addClickHandler(button2, btn2.clickHandler, { once: true });
+                }
+                addClickHandler(button1, hideModal, { once: true });
+                addClickHandler(button2, hideModal, { once: true });
+                section.style.display = 'block';
+            };
+            return {
+                show: showModal,
+                hide: hideModal
+            };
+        })(
+            'modal-container',
+            'modal-content',
+            'modal-content-btn-1',
+            'modal-content-btn-2',
+            'modal-content-btns-container'
+        );
 
-        const scoreContainer = utils.createHTMLElement({
-            elementType: 'div',
-            innerHTML: 'Your Score: '
-        });
-        const SCORE_BOARD = utils.createHTMLElement({
-            elementType: 'span',
-            parent: scoreContainer,
-            attributes: {
-                id: 'score',
-                style: utils.getStyleString({
-                    'font-weight': 'bold'
-                })
-            },
-            innerHTML: '0'
-        });
+        addClickHandler(
+            getById(infoContainerId), 
+            () => utils.getGameEvents().emit('SHOW_GAME_INFO')
+        );
 
         return {
             SNAKE_ARENA,
             PLAY_BUTTON,
             PAUSE_BUTTON,
-            SCORE_BOARD
+            SCORE_BOARD,
+            MODAL
         };
-    } catch (error) {
-        utils.LOGGER.error(`Failed to setup the page: ${error}`);
-        throw error;
-    }
+
+    };
+
+    return {
+        setupGame,
+        onWindowLoad
+    };
 }

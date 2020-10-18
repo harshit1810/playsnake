@@ -1,180 +1,165 @@
 import GameModule from './modules/game';
 import GameEventHandlerModule from './modules/game-event-handler';
+import InitUIModule from './modules/init-ui';
 
 const PLAY_SNAKE = function () {
-    if (!window) {
-        return;
-    }
-    const MAX_HEIGHT_WIDTH = 500;
-    const ARENA_WIDTH = Math.floor(window.innerWidth) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerWidth)
-        : MAX_HEIGHT_WIDTH;
-    const ARENA_HEIGHT = Math.floor(window.innerHeight) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerHeight)
-        : MAX_HEIGHT_WIDTH;
-    const ERROR_MESSAGES = {
+
+    const { onWindowLoad } = InitUIModule();
+    const arenaContainerId = 'arena-section';
+    const ARENA_ID = 'play-snake-arena';
+    const DISPLAY_MESSAGES = {
         DEFAULT: 'Sorry.',
         SETUP_GAME: 'Failed to setup',
-        START_GAME: 'Unable To Start The Game'
+        START_GAME: 'Unable To Start The Game',
+        INACTIVITY_TIMEOUT: 'It seems you are not playing',
+        GAME_OVER: 'Game Over',
+        Q_CONTINUE: 'Continue?'
     };
 
-    const gameEvents = GameEventHandlerModule();
+    const CONFIG = (obj => {
+        const {
+            ARENA_WIDTH,
+            ARENA_HEIGHT
+        } = obj;
+        const borderWidth = 1;
+        const snakeWidth = 14;
+        const snakeSpeed = 12;
+        const eatableRadius = snakeWidth / 2;
+        const defaultSnakeGrowLength = 1;
+        const limits = {
+            x: ARENA_WIDTH - (borderWidth * 2),
+            y: ARENA_HEIGHT - (borderWidth * 2)
+        };
+        const eatablePositionLimits = {
+            x: limits.x - (snakeWidth * 2),
+            y: limits.y - (snakeWidth * 2)
+        };
 
-    const borderWidth = 1;
-
-    const snakeWidth = 14;
-
-    const eatableRadius = snakeWidth / 2;
-
-    const limits = {
-        x: ARENA_WIDTH - borderWidth,
-        y: ARENA_HEIGHT - borderWidth
-    };
-
-    const eatablePositionLimits = {
-        x: limits.x - snakeWidth,
-        y: limits.y - snakeWidth
-    };
-
-    const CONFIG_ARENA = {
-        id: 'play-snake-arena',
-        width: ARENA_WIDTH,
-        height: ARENA_HEIGHT,
-        borderColor: 'black',
-        borderWidth,
-        limits,
-        supportedKeys: [37, 38, 39, 40],
-        arena: {
-            center: {
-                x: Math.floor(ARENA_WIDTH / 2),
-                y: Math.floor(ARENA_HEIGHT / 2)
-            }
-        },
-        directionMap: {
-            37: 'LEFT',
-            38: 'UP',
-            39: 'RIGHT',
-            40: 'DOWN'
-        },
-        keyConfig: {
-            37: {
-                reverse: 39
+        return {
+            id: ARENA_ID,
+            arenaContainerId,
+            width: ARENA_WIDTH,
+            height: ARENA_HEIGHT,
+            borderColor: 'black',
+            borderWidth,
+            limits,
+            supportedKeys: [37, 38, 39, 40],
+            arena: {
+                center: {
+                    x: Math.floor(ARENA_WIDTH / 2),
+                    y: Math.floor(ARENA_HEIGHT / 2)
+                }
             },
-            38: {
-                reverse: 40
+            directionMap: {
+                37: 'LEFT',
+                38: 'UP',
+                39: 'RIGHT',
+                40: 'DOWN'
             },
-            39: {
-                reverse: 37
+            keyConfig: {
+                37: {
+                    reverse: 39
+                },
+                38: {
+                    reverse: 40
+                },
+                39: {
+                    reverse: 37
+                },
+                40: {
+                    reverse: 38
+                }
             },
-            40: {
-                reverse: 38
-            }
-        },
-        pauseButton: {
-            id: 'pause-play-snake',
-            text: 'Pause',
-            order: '0'
-        },
-        resumeButton: {
-            id: 'resume-play-snake',
-            text: 'Resume',
-            order: '1'
-        },
-        snake: {
-            id: 'the-snake',
-            elemType: 'circle',
-            width: snakeWidth,
-            color: 'black',
-            length: 1,
-            speed: 12,
-            step: 1
-        },
-        eatables: {
-            basicFood: {
-                id: 'the-snake-food',
-                color: '#aba99f',
-                description: 'Basic food',
-                showInLegend: true,
-                points: 5,
-                appearDuration: null,
-                startAfter: 0,
+            game: {
+                legendContainerId: 'legend-container',
+                infoContainerId: 'game-info',
+                inactivityTimeout: 300,
+                state: {
+                    paused: 0,
+                    stopped: 1,
+                    playing: 2
+                },
+                scoreBoard: {
+                    id: 'score'
+                },
+                scoreCheckpointMultipleOf: 50
+            },
+            pauseButton: {
+                id: 'pause-play-snake',
+            },
+            resumeButton: {
+                id: 'resume-play-snake',
+            },
+            quitButton: {
+                id: 'quit-play-snake'
+            },
+            snake: {
+                id: 'the-snake',
                 elemType: 'circle',
-                size: eatableRadius,
-                limits: eatablePositionLimits,
-                isIntervalBased: false,
-                code: 'basicFood'
+                width: snakeWidth,
+                color: 'black',
+                length: 1,
+                speed: snakeSpeed,
+                step: 1,
+                turboSpeed: snakeSpeed / 4
             },
-            bonusFood: {
-                id: 'the-snake-bonus-food',
-                color: '#d12308',
-                description: 'Bonus point',
-                showInLegend: true,
-                points: 10,
-                appearDuration: 10,
-                startAfter: 30,
-                elemType: 'circle',
-                size: eatableRadius,
-                limits: eatablePositionLimits,
-                isIntervalBased: true,
-                code: 'bonusFood'
-            },
-            speedBonus: {
-                id: 'the-speed-bonus',
-                color: '#ffe205',
-                description: 'Extra speed',
-                showInLegend: true,
-                points: 0,
-                appearDuration: 10,
-                startAfter: 30,
-                elemType: 'circle',
-                size: eatableRadius,
-                speedDuration: 10,
-                limits: eatablePositionLimits,
-                isIntervalBased: true,
-                code: 'speedBonus'
+            eatables: {
+                basicFood: {
+                    id: 'the-snake-food',
+                    color: '#aba99f',
+                    description: 'Basic food',
+                    showInLegend: true,
+                    points: 5,
+                    appearDuration: null,
+                    startAfter: 0,
+                    elemType: 'circle',
+                    size: eatableRadius,
+                    limits: eatablePositionLimits,
+                    isIntervalBased: false,
+                    code: 'basicFood',
+                    growSnakeIfConsumed: true,
+                    growSnakeByLength: defaultSnakeGrowLength
+                },
+                bonusFood: {
+                    id: 'the-snake-bonus-food',
+                    color: '#d12308',
+                    description: 'Bonus point',
+                    showInLegend: true,
+                    points: 10,
+                    appearDuration: 10,
+                    startAfter: 30,
+                    elemType: 'circle',
+                    size: eatableRadius,
+                    limits: eatablePositionLimits,
+                    isIntervalBased: true,
+                    code: 'bonusFood',
+                    growSnakeIfConsumed: false,
+                    growSnakeByLength: defaultSnakeGrowLength + 1
+                },
+                speedBonus: {
+                    id: 'the-speed-bonus',
+                    color: '#ffe205',
+                    description: 'Turbo boost',
+                    showInLegend: true,
+                    points: 0,
+                    appearDuration: 10,
+                    startAfter: 30,
+                    elemType: 'circle',
+                    size: eatableRadius,
+                    speedDuration: 10,
+                    limits: eatablePositionLimits,
+                    isIntervalBased: true,
+                    code: 'speedBonus',
+                    growSnakeIfConsumed: false,
+                    growSnakeByLength: 0
+                }
             }
-        }
-    };
-
-    class Subject {
-        constructor(topic, observers = []) {
-            // list of snake parts
-            this.observers = observers;
-            this.topic = topic;
-        }
-        addObserver(obsrv) {
-            if (!obsrv || !obsrv.element || !obsrv.element.id) {
-                return;
-            }
-            this.observers.push(obsrv);
-        }
-        removeObserver(obsrv) {
-            this.observers.splice(
-                this.observers.findIndex(obj => obj.element.id === obsrv.element.id), 1
-            );
-        }
-        notify() {
-            this.observers.forEach(obsrv => {
-                // call the topic for each snake part
-                obsrv[this.topic]();
-            });
-        }
-    }
-    class SnakeNotifier extends Subject {
-        constructor() {
-            super('nextXY');
-        }
-        notify(foodEaten) {
-            super.notify();
-            if (!foodEaten) {
-                return;
-            }
-            const food = UTILS.getGame().getSnakeFood();
-            UTILS.getGame().getSnake().grow(food.drop.bind(food));
-        }
-    }
-
-    const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
+        };
+    })(onWindowLoad({
+        arenaId: ARENA_ID,
+        arenaContainerId
+    }));
+    Object.freeze(CONFIG);
 
     const SNAKE_DIRECTION_MAP = {};
 
@@ -194,11 +179,8 @@ const PLAY_SNAKE = function () {
         getDocumentBody: function () {
             return this.getDocument().body;
         },
-        showAlert: function (message) {
-            this.getWindow().alert(message);
-        },
-        getArenaConfig: function () {
-            return CONFIG_ARENA;
+        getConfig: function () {
+            return CONFIG;
         },
         getGame: function () {
             return game;
@@ -212,11 +194,8 @@ const PLAY_SNAKE = function () {
         pixelify: function (number) {
             return String(number).trim().concat(this.RENDER_UNIT);
         },
-        getPositionUpdater: function () {
-            return SNAKE_PART_POSITION_UPDATER;
-        },
-        getStyleString: function (obj = {}) {
-            return Object.keys(obj).reduce((str, key) => {
+        getStyleString: function (obj) {
+            return Object.keys(obj || {}).reduce((str, key) => {
                 if (!key || !String(key).trim().length) {
                     return str;
                 }
@@ -277,8 +256,8 @@ const PLAY_SNAKE = function () {
          * @returns {Object} new coordinates if an object is going out of bounds.
          */
         checkBoundaryPosition(direction, position) {
-            const { borderWidth, limits } = this.getArenaConfig();
-            const snakeWidth = this.getArenaConfig().snake.width;
+            const { borderWidth, limits } = this.getConfig();
+            const snakeWidth = this.getConfig().snake.width;
             switch (direction) {
             case 37:
                 if (position.x < borderWidth) {
@@ -303,8 +282,20 @@ const PLAY_SNAKE = function () {
             }
             return position;
         },
-        getErrorMessages: function() {
-            return ERROR_MESSAGES;
+        getDisplayMessages: function () {
+            return DISPLAY_MESSAGES;
+        },
+        intersectingOnXAxis: function (obj1, obj2) {
+            return (obj2.x1 < obj1.x1 && obj1.x1 < obj2.x2) ||
+                (obj2.x1 < obj1.x2 && obj1.x2 < obj2.x2) ||
+                (obj1.x1 < obj2.x1 && obj2.x1 < obj1.x2) ||
+                (obj1.x1 < obj2.x2 && obj2.x2 < obj1.x2);
+        },
+        intersectingOnYAxis: function (obj1, obj2) {
+            return (obj2.y1 < obj1.y1 && obj1.y1 < obj2.y2) ||
+                (obj2.y1 < obj1.y2 && obj1.y2 < obj2.y2) ||
+                (obj1.y1 < obj2.y1 && obj2.y1 < obj1.y2) ||
+                (obj1.y1 < obj2.y2 && obj2.y2 < obj1.y2);
         },
         LOGGER: {
             // eslint-disable-next-line no-console
@@ -366,18 +357,21 @@ const PLAY_SNAKE = function () {
         };
     })({
         id: Date.now(),
-        direction: UTILS.getArenaConfig().supportedKeys[2],
+        direction: UTILS.getConfig().supportedKeys[2],
         position: {
-            x: UTILS.getArenaConfig().arena.center.x,
-            y: UTILS.getArenaConfig().arena.center.y
+            x: UTILS.getConfig().arena.center.x,
+            y: UTILS.getConfig().arena.center.y
         }
     });
 
+    const gameEvents = GameEventHandlerModule();
     const { PlaySnake } = GameModule(UTILS);
 
-    game = new PlaySnake();
+    game = PlaySnake();
     gameEvents.init(game);
     game.start();
 };
 
-PLAY_SNAKE();
+window.onload = function () {
+    PLAY_SNAKE();
+}
