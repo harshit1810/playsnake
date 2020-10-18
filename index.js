@@ -86,7 +86,7 @@ const PLAY_SNAKE = function () {
             width: snakeWidth,
             color: 'black',
             length: 1,
-            speed: 20,
+            speed: 12,
             step: 1
         },
         eatables: {
