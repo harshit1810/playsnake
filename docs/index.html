@@ -1,9 +1,92 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>PlaySnake</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"></head>
-  <body>
-  <script type="text/javascript" src="playsnake.min.js"></script></body>
+
+<head>
+  <meta charset="UTF-8">
+  <title>PlaySnake</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <style>
+    body {
+      font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+      padding: 10px 10px;
+      margin: 0px 0px
+    }
+
+    .universal-padding {
+      padding: 5px 5px;
+    }
+
+    .rows {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cols {
+      display: flex;
+      flex-direction: row;
+    }
+
+    .capitalize {
+      text-transform: capitalize;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    #pause-play-snake {
+      flex: 0 1 20%;
+      order: 0;
+    }
+
+    #resume-play-snake {
+      flex: 0 1 20%;
+      order: 1;
+      margin-left: 5px;
+    }
+
+    #game-controls {
+      justify-content: flex-start;
+    }
+
+    #game-controls>button {
+      border-radius: 5px;
+    }
+
+    #legend-container {
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    #score {
+      font-weight: bold;
+    }
+
+    #arena-section {
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    #play-snake-arena {
+      border: 1px solid black;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="cols universal-padding" id="game-controls">
+    <button id="pause-play-snake" class="capitalize universal-padding text-center">pause</button>
+    <button id="resume-play-snake" class="capitalize universal-padding text-center" disabled>resume</button>
+  </section>
+  <section id="legend-container" class="cols universal-padding"></section>
+  <section id="score-section" class="cols universal-padding">
+    Score:&nbsp
+    <span id="score">0</span>
+  </section>
+  <section id="arena-section" class="rows universal-padding">
+    <svg id="play-snake-arena"></svg>
+  </section>
+  <script type="text/javascript" src="playsnake.min.js"></script>
+</body>
+
 </html>

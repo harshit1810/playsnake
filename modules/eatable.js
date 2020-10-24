@@ -1,6 +1,6 @@
 export default function (utils) {
 
-    const config = utils.getArenaConfig();
+    const config = utils.getConfig();
 
     const {
         width: snakeWidth
@@ -20,7 +20,9 @@ export default function (utils) {
             isIntervalBased,
             startAfter,
             points,
-            appearDuration
+            appearDuration,
+            growSnakeIfConsumed,
+            growSnakeByLength
         } = config.eatables[code];
 
         const element = utils.createHTMLElement({
@@ -95,15 +97,22 @@ export default function (utils) {
             get appearDuration() {
                 return appearDuration;
             },
+            get growSnakeIfConsumed() {
+                return growSnakeIfConsumed;
+            },
+            get growSnakeByLength() {
+                return growSnakeByLength;
+            },
             startInterval: function () {
-                if (!this.isIntervalBased) {
+                const self = this;
+                if (!self.isIntervalBased) {
                     return;
                 }
-                this.intervalId = setInterval(
-                    this.drop.bind(this),
-                    this.startAfter * 1000
+                self.intervalId = setInterval(
+                    self.drop.bind(self),
+                    self.startAfter * 1000
                 );
-                return this.intervalId;
+                return self.intervalId;
             },
             drop: function () {
                 const { x, y } = getNextEatablePosition(this.limits, this.size);
@@ -132,11 +141,11 @@ export default function (utils) {
     function getNextEatablePosition(limits, foodSize) {
         function getRandomX() {
             return Math.floor(Math.random() * (limits.x - foodSize)) +
-                utils.getArenaConfig().borderWidth + 1;
+                config.borderWidth + 1;
         }
         function getRandomY() {
             return Math.floor(Math.random() * (limits.y - foodSize)) +
-                utils.getArenaConfig().borderWidth + 1;
+                config.borderWidth + 1;
         }
         let _x, _y;
         do {

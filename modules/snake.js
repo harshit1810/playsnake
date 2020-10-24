@@ -1,5 +1,5 @@
 export default function (utils) {
-    const config = utils.getArenaConfig();
+    const config = utils.getConfig();
     
     const {
         elemType: snakeElementType,
@@ -19,9 +19,10 @@ export default function (utils) {
         let length = 1;
         let color = snakeColor;
         let currentDirection = direction;
-        let head = createSnakePart(arena, startX, startY, currentDirection, length, color);
+        let head = createSnakePart(arena, startX, startY, currentDirection, length);
         let tail = head;
         let intervalId;
+        const bodyParts = [ head ];
 
         return {
             get arena() {
@@ -46,7 +47,9 @@ export default function (utils) {
                 return tail;
             },
             set tail(t) {
-                return tail = t;
+                tail = t;
+                this.length += 1;
+                return tail;
             },
             get intervalId() {
                 return intervalId;
@@ -72,6 +75,9 @@ export default function (utils) {
             set color(c) {
                 color = c;
             },
+            get bodyParts() {
+                return bodyParts;
+            },
             UP: function () {
                 this.move(0, snakeStep * -1);
             },
@@ -96,10 +102,9 @@ export default function (utils) {
                 return self.intervalId;
             },
             changeDirection: function (newDirection) {
-                typeof newDirection === 'number'
+                this.head.direction = typeof newDirection === 'number'
                     ? newDirection
                     : this.currentDirection;
-                this.head.direction = newDirection;
             },
             start: function () {
                 const direction = directionMap[this.head.direction];
@@ -124,25 +129,21 @@ export default function (utils) {
                 }
                 return { x: _x, y: _y };
             },
-            /**
-             * adds a snake part at the tail
-             * @param {function} next a callback
-             * @returns undefined
-             */
-            grow: function (next) {
-                const { x, y } = this.getPositionOfNewPart();
-                const newPart = createSnakePart(
-                    this.arena, x, y, this.tail.direction, this.length + 1, this.tail.color
-                );
-                this.length += 1;
-                this.tail.next = newPart;
-                newPart.prev = this.tail;
-                this.tail = newPart;
-                utils.getPositionUpdater().addObserver(this.tail);
-                // drop food pellet
-                if (typeof next === 'function') {
-                    next();
+            grow: function (growLength = 1) {
+                const self = this;
+                for (let count = 1; count <= growLength; count++) {
+                    const { x, y } = self.getPositionOfNewPart();
+                    self.bodyParts.push(
+                        createSnakePart(
+                            self.arena, x, y, self.tail.direction, self.length + 1
+                        )
+                    );
+                    const newPart = self.bodyParts[self.bodyParts.length - 1];
+                    self.tail.next = newPart;
+                    newPart.prev = self.tail;
+                    self.tail = newPart;
                 }
+                utils.getGame().getBasicFood().drop();
             },
             changeColor: function (colour) {
                 let _part = this.head;
@@ -158,7 +159,7 @@ export default function (utils) {
                 }
             },
             isEatingFood: function () {
-                const food = utils.getGame().getSnakeFood();
+                const food = utils.getGame().getBasicFood();
                 const { x: foodX, y: foodY } = food;
                 if (this.head.x < foodX
                     && foodX < this.head.x2
@@ -204,13 +205,13 @@ export default function (utils) {
                 });
                 _part.x = nextX;
                 _part.y = nextY;
-                const isEatingFood = this.isEatingFood();
+                const isEatingBasicFood = this.isEatingFood();
                 const isEatingBonusFood = this.isEatingBonusFood();
                 const isEatingSpeedBonus = this.isEatingSpeedBonus();
-                if (isEatingFood) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getSnakeFood());
-                }
-                if (isEatingSpeedBonus) {
+                this.moveAllParts();
+                if (isEatingBasicFood) {
+                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getBasicFood());
+                } else if (isEatingSpeedBonus) {
                     utils.getGameEvents().emit(
                         'EATABLE_CONSUMED',
                         utils.getGame().getSpeedBonusFood()
@@ -219,20 +220,23 @@ export default function (utils) {
                         'USE_SPEED_BONUS',
                         utils.getGame().getSpeedBonusFood()
                     );
-                }
-                if (isEatingBonusFood) {
+                } else if (isEatingBonusFood) {
                     utils.getGameEvents().emit(
                         'EATABLE_CONSUMED',
                         utils.getGame().getSnakeBonusFood()
                     );
                 }
-                this.moveAllParts(isEatingFood);
             },
-            moveAllParts: function (foodEaten) {
+            moveAllParts: function () {
                 if (this.length === 1) {
                     utils.getDirectionCommands().clear();
                 }
-                utils.getPositionUpdater().notify(foodEaten);
+                const parts = this.bodyParts;
+                for (let i = 0 ; i < parts.length ; i++) {
+                    if (!parts[i].isHead) {
+                        parts[i].nextXY();
+                    }
+                }
             },
             /**
              * @returns {boolean} indicates wether the snake is going to eat itself
@@ -286,28 +290,29 @@ export default function (utils) {
         };
     }
 
-    function createSnakePart(arena, x, y, dirx, partNumber, color) {
+    function createSnakePart(arena, x, y, dirx, partNumber, color = snakeColor) {
 
+        const isHead = partNumber === 1;
         const id = `${snakeId}-part${partNumber}`;
-        let direction = dirx;
+        const radius = snakeWidth / 2;
+        const [cx, cy] = [x + (radius - 1), y + (radius - 1)];
         const element = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
             elementType: snakeElementType,
             attributes: {
                 id,
-                tabIndex: partNumber,
-                x,
-                y,
-                rx: snakeWidth,
-                ry: snakeWidth,
+                cx,
+                cy,
+                r: radius,
                 fill: color,
                 width: utils.pixelify(snakeWidth),
                 height: utils.pixelify(snakeWidth)
             },
             parent: arena
         });
-        let next = null;
-        let prev = null;
+        let direction = dirx, 
+            next = null,
+            prev = null;
 
         return {
             id,
@@ -331,40 +336,47 @@ export default function (utils) {
             set prev(element) {
                 prev = element;
             },
-            isSnakeHead: function () {
-                return id === snakeId;
-            },
             get x() {
-                return parseInt(element.getAttribute('x'));
+                return this.getCenter().x - (radius - 1);
             },
             set x(value) {
-                element.setAttribute('x', Math.floor(value));
+                element.setAttribute('cx', value + (radius-1));
             },
             get y() {
-                return parseInt(element.getAttribute('y'));
+                return this.getCenter().y - (radius - 1);
             },
             set y(value) {
-                element.setAttribute('y', Math.floor(value));
+                element.setAttribute('cy', value + (radius - 1));
             },
             get x2() {
-                return this.x + (snakeWidth - 1);
+                return this.getCenter().x + (radius - 1);
             },
             get y2() {
-                return this.y + (snakeWidth - 1);
+                return this.getCenter().y + (radius - 1);
+            },
+            get isHead() {
+                return isHead;
             },
             isTail: function () {
                 return id === utils.getGame().getSnake().tail.id;
             },
+            getCenter: function() {
+                return {
+                    x: parseInt(this.element.getAttribute('cx')),
+                    y: parseInt(this.element.getAttribute('cy'))
+                };
+            },
             /**
-             * method calculates the next coordinates for a part on each step
-             * triggered for all new parts
+             * calculate the next coordinates for a part on each step.
+             * is triggered for all parts
              */
             nextXY: function () {
+                const self = this;
                 let nextPosition = {
-                    x: this.x, y: this.y
+                    x: self.x, y: self.y
                 };
                 // get coordinates for next step in the same direction
-                switch (this.direction) {
+                switch (self.direction) {
                 case 37:
                     nextPosition.x -= snakeStep;
                     break;
@@ -378,24 +390,25 @@ export default function (utils) {
                     nextPosition.y += snakeStep;
                     break;
                 }
-                nextPosition = utils.checkBoundaryPosition(this.direction, nextPosition);
+                utils.checkBoundaryPosition(self.direction, nextPosition);
                 // change current position to the calculated next position
-                this.x = nextPosition.x;
-                this.y = nextPosition.y;
+                self.x = nextPosition.x;
+                self.y = nextPosition.y;
                 const commandStack = utils.getDirectionCommands();
                 // check if player game any direction commands
                 if (commandStack.hasCommands()) {
                     const _command = commandStack.getNextTurn(id);
+                    const currentCenter = self.getCenter();
                     // change direction of this part when it reaches the position 
                     // at which the direction command was given
-                    if (_command && _command.position.x == this.x &&
-                        _command.position.y == this.y) {
+                    if (_command && _command.position.x == currentCenter.x &&
+                        _command.position.y == currentCenter.y) {
                         // set new direction
-                        this.direction = _command.direction;
+                        self.direction = _command.direction;
                         (utils.getSnakeDirectionMap())[id] = _command.id;
                         // remove the recorded command 
                         // if the last part has followed the direction command
-                        if (this.isTail()) {
+                        if (self.isTail()) {
                             commandStack.remove();
                         }
                     }

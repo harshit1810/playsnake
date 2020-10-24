@@ -11,12 +11,21 @@ export default function () {
                 gameInstance.resume();
             }
         ],
+        STOP_GAME: [
+            () => gameInstance.stop()
+        ],
         EATABLE_CONSUMED: [
             eatable => {
                 eatable.hide();
-                if (typeof eatable.points === 'number') {
-                    emitEvent('UPDATE_SCORE', eatable.points);
+            },
+            eatable => {
+                if (typeof eatable.points !== 'number') {
+                    return;
                 }
+                emitEvent('UPDATE_SCORE', eatable.points);
+            },
+            eatable => {
+                gameInstance.growSnake(eatable)
             }
         ],
         UPDATE_SCORE: [
@@ -30,9 +39,7 @@ export default function () {
             }
         ],
         DEVOURED_SELF: [
-            () => {
-                gameInstance.stop();
-            }
+            () => emitEvent('STOP_GAME')
         ],
         SNAKE_DIRECTION_CHANGE: [
             ({ direction }) => {
@@ -51,9 +58,7 @@ export default function () {
     }
 
     return {
-        init: function (game) {
-            gameInstance = game;
-        },
+        init: game => gameInstance = game,
         emit: emitEvent,
         listen: function (eventName, cb) {
             if (Array.isArray(events[eventName])) {
@@ -62,8 +67,6 @@ export default function () {
                 events[eventName] = [cb];
             }
         },
-        destruct: function () {
-            events = {};
-        }
+        destruct: () => events = {}
     };
 };

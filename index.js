@@ -1,36 +1,44 @@
 import GameModule from './modules/game';
 import GameEventHandlerModule from './modules/game-event-handler';
+import InitUIModule from './modules/init-ui';
 
 const PLAY_SNAKE = function () {
-    if (!window) {
-        return;
-    }
-    const MAX_HEIGHT_WIDTH = 500;
-    const ARENA_WIDTH = Math.floor(window.innerWidth) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerWidth)
-        : MAX_HEIGHT_WIDTH;
-    const ARENA_HEIGHT = Math.floor(window.innerHeight) < MAX_HEIGHT_WIDTH
-        ? Math.floor(window.innerHeight)
-        : MAX_HEIGHT_WIDTH;
+
+    const { onWindowLoad } = InitUIModule();
+    const ARENA_ID = 'play-snake-arena';
+    const {
+        ARENA_WIDTH,
+        ARENA_HEIGHT
+    } = onWindowLoad({
+        arenaMaxSize: 500,
+        arenaId: ARENA_ID
+    });
+    
+
     const ERROR_MESSAGES = {
         DEFAULT: 'Sorry.',
         SETUP_GAME: 'Failed to setup',
-        START_GAME: 'Unable To Start The Game'
+        START_GAME: 'Unable To Start The Game',
+        INACTIVITY_TIMEOUT: 'It seems you are not playing'
     };
-
-    const gameEvents = GameEventHandlerModule();
 
     const borderWidth = 1;
 
-    const snakeWidth = 15;
-
+    const snakeWidth = 14;
+    const snakeSpeed = 12;
+    const eatableRadius = snakeWidth / 2;
+    const defaultSnakeGrowLength = 1;
     const limits = {
         x: ARENA_WIDTH - borderWidth,
         y: ARENA_HEIGHT - borderWidth
     };
+    const eatablePositionLimits = {
+        x: limits.x - (snakeWidth * 2),
+        y: limits.y - (snakeWidth * 2)
+    };
 
-    const CONFIG_ARENA = {
-        id: 'play-snake-arena',
+    const CONFIG = {
+        id: ARENA_ID,
         width: ARENA_WIDTH,
         height: ARENA_HEIGHT,
         borderColor: 'black',
@@ -63,6 +71,14 @@ const PLAY_SNAKE = function () {
                 reverse: 38
             }
         },
+        game: {
+            inactivityTimeout: 300,
+            state: {
+                paused: 0,
+                stopped: 1,
+                playing: 2
+            }
+        },
         pauseButton: {
             id: 'pause-play-snake',
             text: 'Pause',
@@ -75,12 +91,13 @@ const PLAY_SNAKE = function () {
         },
         snake: {
             id: 'the-snake',
-            elemType: 'rect',
+            elemType: 'circle',
             width: snakeWidth,
             color: 'black',
             length: 1,
-            speed: 20,
-            step: 1
+            speed: snakeSpeed,
+            step: 1,
+            turboSpeed: snakeSpeed / 4
         },
         eatables: {
             basicFood: {
@@ -92,13 +109,12 @@ const PLAY_SNAKE = function () {
                 appearDuration: null,
                 startAfter: 0,
                 elemType: 'circle',
-                size: 5,
-                limits: {
-                    x: limits.x - snakeWidth,
-                    y: limits.y - snakeWidth
-                },
+                size: eatableRadius,
+                limits: eatablePositionLimits,
                 isIntervalBased: false,
-                code: 'basicFood'
+                code: 'basicFood',
+                growSnakeIfConsumed: true,
+                growSnakeByLength: defaultSnakeGrowLength
             },
             bonusFood: {
                 id: 'the-snake-bonus-food',
@@ -109,74 +125,32 @@ const PLAY_SNAKE = function () {
                 appearDuration: 10,
                 startAfter: 30,
                 elemType: 'circle',
-                size: 15,
-                limits: {
-                    x: limits.x - (snakeWidth * 2),
-                    y: limits.y - (snakeWidth * 2)
-                },
+                size: eatableRadius,
+                limits: eatablePositionLimits,
                 isIntervalBased: true,
-                code: 'bonusFood'
-            },
+                code: 'bonusFood',
+                growSnakeIfConsumed: false,
+                growSnakeByLength: defaultSnakeGrowLength + 1
+            }, 
             speedBonus: {
                 id: 'the-speed-bonus',
                 color: '#ffe205',
-                description: 'Extra speed',
+                description: 'Turbo boost',
                 showInLegend: true,
                 points: 0,
                 appearDuration: 10,
                 startAfter: 30,
                 elemType: 'circle',
-                size: 5,
+                size: eatableRadius,
                 speedDuration: 10,
-                limits: {
-                    x: limits.x - snakeWidth,
-                    y: limits.y - snakeWidth
-                },
+                limits: eatablePositionLimits,
                 isIntervalBased: true,
-                code: 'speedBonus'
+                code: 'speedBonus',
+                growSnakeIfConsumed: false,
+                growSnakeByLength: 0
             }
         }
     };
-
-    class Subject {
-        constructor(topic, observers = []) {
-            // list of snake parts
-            this.observers = observers;
-            this.topic = topic;
-        }
-        addObserver(obsrv) {
-            if (!obsrv || !obsrv.element || !obsrv.element.id) {
-                return;
-            }
-            this.observers.push(obsrv);
-        }
-        removeObserver(obsrv) {
-            this.observers.splice(
-                this.observers.findIndex(obj => obj.element.id === obsrv.element.id), 1
-            );
-        }
-        notify() {
-            this.observers.forEach(obsrv => {
-                // call the topic for each snake part
-                obsrv[this.topic]();
-            });
-        }
-    }
-    class SnakeNotifier extends Subject {
-        constructor() {
-            super('nextXY');
-        }
-        notify(foodEaten) {
-            super.notify();
-            if (!foodEaten) {
-                return;
-            }
-            const food = UTILS.getGame().getSnakeFood();
-            UTILS.getGame().getSnake().grow(food.drop.bind(food));
-        }
-    }
-
-    const SNAKE_PART_POSITION_UPDATER = new SnakeNotifier();
 
     const SNAKE_DIRECTION_MAP = {};
 
@@ -196,11 +170,11 @@ const PLAY_SNAKE = function () {
         getDocumentBody: function () {
             return this.getDocument().body;
         },
-        showAlert: function (message) {
+        windowAlert: function (message) {
             this.getWindow().alert(message);
         },
-        getArenaConfig: function () {
-            return CONFIG_ARENA;
+        getConfig: function () {
+            return CONFIG;
         },
         getGame: function () {
             return game;
@@ -213,9 +187,6 @@ const PLAY_SNAKE = function () {
         },
         pixelify: function (number) {
             return String(number).trim().concat(this.RENDER_UNIT);
-        },
-        getPositionUpdater: function () {
-            return SNAKE_PART_POSITION_UPDATER;
         },
         getStyleString: function (obj = {}) {
             return Object.keys(obj).reduce((str, key) => {
@@ -272,14 +243,15 @@ const PLAY_SNAKE = function () {
             return gameEvents;
         },
         /**
-         * returns new coordinates if the snake part is going out of bounds.
-         * 
-         * @param {number} direction the current direction of the snake part.
+         * @param {number} direction the current direction of the object.
          * @param {object} position coordinates of the next step.
+         * @param {number} position.x
+         * @param {number} position.y
+         * @returns {Object} new coordinates if an object is going out of bounds.
          */
         checkBoundaryPosition(direction, position) {
-            const { borderWidth, limits } = this.getArenaConfig();
-            const snakeWidth = this.getArenaConfig().snake.width;
+            const { borderWidth, limits } = this.getConfig();
+            const snakeWidth = this.getConfig().snake.width;
             switch (direction) {
             case 37:
                 if (position.x < borderWidth) {
@@ -367,18 +339,21 @@ const PLAY_SNAKE = function () {
         };
     })({
         id: Date.now(),
-        direction: UTILS.getArenaConfig().supportedKeys[2],
+        direction: UTILS.getConfig().supportedKeys[2],
         position: {
-            x: UTILS.getArenaConfig().arena.center.x,
-            y: UTILS.getArenaConfig().arena.center.y
+            x: UTILS.getConfig().arena.center.x,
+            y: UTILS.getConfig().arena.center.y
         }
     });
 
+    const gameEvents = GameEventHandlerModule();
     const { PlaySnake } = GameModule(UTILS);
 
-    game = new PlaySnake();
+    game = PlaySnake();
     gameEvents.init(game);
     game.start();
 };
 
-PLAY_SNAKE();
+window.onload = function(){
+    PLAY_SNAKE();
+}

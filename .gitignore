@@ -2,3 +2,5 @@ node_modules/
 .babelrc
 *dev.min.js*
 .DS_Store
+docs/**.map
+docs/**.log
