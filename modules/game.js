@@ -8,13 +8,22 @@ export default function (utils) {
     const { Snake } = SnakeModule(utils);
     const config = utils.getConfig();
     const { setupGame } = InitUIModule();
+    const message = utils.getDisplayMessages();
 
     function PlaySnake() {
-        const { SNAKE_ARENA, PLAY_BUTTON, PAUSE_BUTTON, SCORE_BOARD } = setupGame(utils);
-        if (!SNAKE_ARENA) {
-            utils.windowAlert(utils.getErrorMessages().SETUP_GAME);
-            throw new Error(utils.getErrorMessages().SETUP_GAME);
+        let SNAKE_ARENA, PLAY_BUTTON, PAUSE_BUTTON, SCORE_BOARD, MODAL;
+        try {
+            ({ 
+                SNAKE_ARENA, 
+                PLAY_BUTTON, 
+                PAUSE_BUTTON, 
+                SCORE_BOARD, 
+                MODAL 
+            } = setupGame(utils));
+        } catch (error) {
+            throw new Error(message.SETUP_GAME);
         }
+
         let _state = config.game.state.playing, 
             _snake, 
             _snakeFood, 
@@ -67,9 +76,6 @@ export default function (utils) {
             },
             set state(s) {
                 _state = s;
-            },
-            showAlert: function(message) {
-                utils.getWindow().alert(message);
             },
             getSnake: function () {
                 const self = this;
@@ -140,7 +146,12 @@ export default function (utils) {
                     self.getSpeedBonusFood().startInterval();
                     self.setButtonListeners();
                 } catch (error) {
-                    self.showAlert(utils.getErrorMessages().START_GAME);
+                    self.showModal({
+                        modalConfig: {texts: message.START_GAME,
+                            btn1: { show: false },
+                            btn2: { label: 'ok' }}
+                    });
+                    throw error;
                 }
             },
             growSnake: function (eatable) {
@@ -158,6 +169,7 @@ export default function (utils) {
                     gameControls.playButton.removeAttribute('disabled');
                 }
                 self.state = config.game.state.paused;
+                utils.LOGGER.log('game paused');
             },
             resume: function () {
                 const self = this;
@@ -168,6 +180,7 @@ export default function (utils) {
                     gameControls.pauseButton.removeAttribute('disabled');
                 }
                 self.state = config.game.state.playing;
+                utils.LOGGER.log('game resumed');
             },
             stop: function () {
                 const self = this;
@@ -187,7 +200,24 @@ export default function (utils) {
                 self.speedBonus = null;
                 gameControls.pauseButton.setAttribute('disabled', true);
                 gameControls.playButton.setAttribute('disabled', true);
-                self.showAlert('GAME OVER\nYou Scored ' + self.getScore() + ' points.');
+                self.showModal({
+                    modalConfig: {
+                        texts: [
+                            message.GAME_OVER,
+                            'You Scored ' + self.getScore() + ' points'
+                        ],
+                        btn1: {
+                            label: 'quit', 
+                            clickHandler: utils.getWindow().close.bind(utils.getWindow())
+                        },
+                        btn2: { 
+                            label: 'restart', 
+                            clickHandler: utils.getWindow().location.reload.bind(
+                                utils.getWindow().location
+                            )
+                        }
+                    }
+                });
             },
             manageInactivity: function() {
                 const self = this;
@@ -196,8 +226,12 @@ export default function (utils) {
                 }
                 _inactivityTimeout = setTimeout(
                     () => {
-                        self.showAlert(utils.getErrorMessages().INACTIVITY_TIMEOUT);
-                        self.stop();
+                        self.showModal({
+                            pauseGame: true,
+                            modalConfig: {texts: [message.INACTIVITY_TIMEOUT, message.Q_CONTINUE],
+                                btn1: { clickHandler: self.stop.bind(self) },
+                                btn2: { clickHandler: self.resume.bind(self) }}
+                        });
                     }, 
                     Math.floor(config.game.inactivityTimeout) * 1000
                 );
@@ -246,9 +280,14 @@ export default function (utils) {
                 return parseInt(gameControls.scoreBoard.innerHTML);
             },
             updateScore: function (points) {
-                gameControls.scoreBoard.innerHTML =
-                    parseInt(gameControls.scoreBoard.innerHTML) + points;
-                return parseInt(gameControls.scoreBoard.innerHTML);
+                const newScore = parseInt(gameControls.scoreBoard.innerHTML) + points;
+                gameControls.scoreBoard.innerHTML = newScore;
+                if (newScore > 0 && newScore % config.game.scoreCheckpointMultipleOf === 0) {
+                    utils.getGameEvents().emit(
+                        'SCORE_CHECKPOINT', 
+                        newScore / config.game.scoreCheckpointMultipleOf
+                    );
+                }
             },
             increaseSnakeSpeed: function () {
                 // stop current movement
@@ -260,6 +299,28 @@ export default function (utils) {
                     utils.getWindow().clearInterval(this.getSnake().intervalId);
                     this.getSnake().startSnake(config.snake.speed);
                 }, config.eatables.speedBonus.speedDuration * 1000);
+            },
+            processScoreCheckpoint: function(checkpointIndex) {
+                utils.LOGGER.log(`checkpoint ${checkpointIndex} reached`);
+            },
+            showGameInfo: function() {
+                this.showModal({
+                    pauseGame: true,
+                    modalConfig: {
+                        elementIds: [config.game.legendContainerId],
+                        btn1: { show: false },
+                        btn2: { 
+                            label: 'ok',
+                            clickHandler: this.resume.bind(this)
+                        }
+                    }
+                });
+            },
+            showModal: function({ pauseGame = false, modalConfig }) {
+                pauseGame 
+                    ? this.pause() 
+                    : undefined;
+                MODAL.show(modalConfig);
             }
         };
     }

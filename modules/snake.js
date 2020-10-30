@@ -1,6 +1,6 @@
 export default function (utils) {
     const config = utils.getConfig();
-    
+
     const {
         elemType: snakeElementType,
         color: snakeColor,
@@ -9,12 +9,6 @@ export default function (utils) {
         id: snakeId,
     } = config.snake;
 
-    const {
-        size: bonusFoodSize,
-    } = config.eatables.bonusFood;
-
-    const directionMap = config.directionMap;
-
     function Snake(arena, startX, startY, direction, speed) {
         let length = 1;
         let color = snakeColor;
@@ -22,7 +16,7 @@ export default function (utils) {
         let head = createSnakePart(arena, startX, startY, currentDirection, length);
         let tail = head;
         let intervalId;
-        const bodyParts = [ head ];
+        const bodyParts = [head];
 
         return {
             get arena() {
@@ -78,18 +72,6 @@ export default function (utils) {
             get bodyParts() {
                 return bodyParts;
             },
-            UP: function () {
-                this.move(0, snakeStep * -1);
-            },
-            DOWN: function () {
-                this.move(0, snakeStep);
-            },
-            RIGHT: function () {
-                this.move(snakeStep, 0);
-            },
-            LEFT: function () {
-                this.move(snakeStep * -1, 0);
-            },
             startSnake: function (newSpeed) {
                 const self = this;
                 newSpeed = typeof newSpeed === 'number'
@@ -107,8 +89,21 @@ export default function (utils) {
                     : this.currentDirection;
             },
             start: function () {
-                const direction = directionMap[this.head.direction];
-                this[direction]();
+                const direction = config.directionMap[this.head.direction];
+                switch (direction) {
+                case 'UP':
+                    this.move(0, snakeStep * -1);
+                    break;
+                case 'DOWN':
+                    this.move(0, snakeStep);
+                    break;
+                case 'RIGHT':
+                    this.move(snakeStep, 0);
+                    break;
+                case 'LEFT':
+                    this.move(snakeStep * -1, 0);
+                    break;
+                }
             },
             getPositionOfNewPart: function () {
                 const { x, y, direction } = this.tail;
@@ -158,39 +153,14 @@ export default function (utils) {
                     }, 0);
                 }
             },
-            isEatingFood: function () {
-                const food = utils.getGame().getBasicFood();
-                const { x: foodX, y: foodY } = food;
-                if (this.head.x < foodX
-                    && foodX < this.head.x2
-                    && this.head.y < foodY
-                    && foodY < this.head.y2) {
-                    return true;
-                }
-                return false;
-            },
-            isEatingBonusFood: function () {
-                const head = this.head;
-                const { x: bonusFoodX, y: bonusFoodY } = utils.getGame().getSnakeBonusFood();
-                let x1 = bonusFoodX - bonusFoodSize - 1;
-                let x2 = bonusFoodX + bonusFoodSize - 1;
-                let y1 = bonusFoodY - bonusFoodSize - 1;
-                let y2 = bonusFoodY + bonusFoodSize - 1;
-                if (x1 < head.x && head.x < x2 && y1 < head.y && head.y < y2) {
-                    return true;
-                }
-                return false;
-            },
-            isEatingSpeedBonus: function () {
-                const _speed_bonus = utils.getGame().getSpeedBonusFood();
-                const { x, y } = _speed_bonus;
-                if (this.head.x < x
-                    && x < this.head.x2
-                    && this.head.y < y
-                    && y < this.head.y2) {
-                    return true;
-                }
-                return false;
+            isEatingEatable: function (food) {
+                return utils.intersectingOnXAxis(
+                    { x1: this.head.x, x2: this.head.x2 }, 
+                    { x1: food.x, x2: food.x2 }
+                ) && utils.intersectingOnYAxis(
+                    { y1: this.head.y, y2: this.head.y2 }, 
+                    { y1: food.y, y2: food.y2 }
+                );
             },
             move: function (xvalue, yvalue) {
                 const isGoingToEatSelf = this.isDevouringSelf();
@@ -205,9 +175,15 @@ export default function (utils) {
                 });
                 _part.x = nextX;
                 _part.y = nextY;
-                const isEatingBasicFood = this.isEatingFood();
-                const isEatingBonusFood = this.isEatingBonusFood();
-                const isEatingSpeedBonus = this.isEatingSpeedBonus();
+                const [
+                    isEatingBasicFood, 
+                    isEatingBonusFood, 
+                    isEatingSpeedBonus
+                ] = [
+                    utils.getGame().getBasicFood(), 
+                    utils.getGame().getSnakeBonusFood(),
+                    utils.getGame().getSpeedBonusFood()
+                ].map(this.isEatingEatable.bind(this));
                 this.moveAllParts();
                 if (isEatingBasicFood) {
                     utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getBasicFood());
@@ -232,57 +208,37 @@ export default function (utils) {
                     utils.getDirectionCommands().clear();
                 }
                 const parts = this.bodyParts;
-                for (let i = 0 ; i < parts.length ; i++) {
+                for (let i = 0; i < parts.length; i++) {
                     if (!parts[i].isHead) {
                         parts[i].nextXY();
                     }
                 }
             },
             /**
-             * @returns {boolean} indicates wether the snake is going to eat itself
+             * check whether the snake is eating itself or not
+             * @returns {boolean}
              */
             isDevouringSelf: function () {
                 let isDevouring = false;
-                let nextPart = this.head.next;
-                let snakeDirection = this.head.direction;
-                while (nextPart !== null) {
-                    // check for tail node and nodes which are 
-                    // travelling in different direction than the head
-                    if (nextPart.direction !== snakeDirection || nextPart.id === this.tail.id) {
-                        switch (snakeDirection) {
-                        case 37:
-                            if (this.head.y === nextPart.y &&
-                                    this.head.x > nextPart.x &&
-                                    this.head.x <= nextPart.x2) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 38:
-                            if (this.head.x === nextPart.x &&
-                                    this.head.y > nextPart.y &&
-                                    this.head.y <= nextPart.y2) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 39:
-                            if (this.head.y === nextPart.y &&
-                                    this.head.x2 < nextPart.x2 &&
-                                    this.head.x2 >= nextPart.x) {
-                                isDevouring = true;
-                            }
-                            break;
-                        case 40:
-                            if (this.head.x === nextPart.x &&
-                                    this.head.y2 < nextPart.y2 &&
-                                    this.head.y2 >= nextPart.y) {
-                                isDevouring = true;
-                            }
-                            break;
-                        }
-                        if (isDevouring) {
-                            break;
-                        }
-                    }
+                // snake's head cannot eat the next part
+                if (this.length <= 2) {
+                    return isDevouring;
+                }
+                let nextPart = this.head.next.next;
+                const { x: hx, y: hy } = this.head.getCenter();
+                
+                while (nextPart !== null && !isDevouring) {
+                    const { x: cx, y: cy } = nextPart.getCenter();
+                    // get the coordinates for the medians of the circle
+                    const [cx1, cx2, cy1, cy2] = [
+                        cx - (nextPart.radius - 1),
+                        cx + (nextPart.radius - 1),
+                        cy - (nextPart.radius - 1),
+                        cy + (nextPart.radius - 1)
+                    ];
+                    const isEatingHorizontally = cx1 <= hx && hx <= cx2;
+                    const isEatingVertically = cy1 <= hy && hy <= cy2;
+                    isDevouring = isEatingHorizontally && isEatingVertically;
                     nextPart = nextPart.next;
                 }
                 return isDevouring;
@@ -299,18 +255,10 @@ export default function (utils) {
         const element = utils.createHTMLElement({
             elementNamespace: utils.getSvgNamespace(),
             elementType: snakeElementType,
-            attributes: {
-                id,
-                cx,
-                cy,
-                r: radius,
-                fill: color,
-                width: utils.pixelify(snakeWidth),
-                height: utils.pixelify(snakeWidth)
-            },
+            attributes: { id, cx, cy, r: radius, fill: color },
             parent: arena
         });
-        let direction = dirx, 
+        let direction = dirx,
             next = null,
             prev = null;
 
@@ -318,6 +266,7 @@ export default function (utils) {
             id,
             element,
             color,
+            radius,
             get direction() {
                 return direction;
             },
@@ -340,7 +289,7 @@ export default function (utils) {
                 return this.getCenter().x - (radius - 1);
             },
             set x(value) {
-                element.setAttribute('cx', value + (radius-1));
+                element.setAttribute('cx', value + (radius - 1));
             },
             get y() {
                 return this.getCenter().y - (radius - 1);
@@ -360,7 +309,7 @@ export default function (utils) {
             isTail: function () {
                 return id === utils.getGame().getSnake().tail.id;
             },
-            getCenter: function() {
+            getCenter: function () {
                 return {
                     x: parseInt(this.element.getAttribute('cx')),
                     y: parseInt(this.element.getAttribute('cy'))
@@ -373,7 +322,8 @@ export default function (utils) {
             nextXY: function () {
                 const self = this;
                 let nextPosition = {
-                    x: self.x, y: self.y
+                    x: self.x,
+                    y: self.y
                 };
                 // get coordinates for next step in the same direction
                 switch (self.direction) {

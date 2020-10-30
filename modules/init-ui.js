@@ -2,15 +2,21 @@ export default function () {
 
     const onWindowLoad = function (arg) {
         const {
-            arenaMaxSize,
-            arenaId
+            arenaId,
+            arenaContainerId
         } = arg;
 
+        const unpixelify = str => Math.floor(String(str).trim().split('px')[0]);
+        const arenaContainer = document.getElementById(arenaContainerId);
         const arena = document.getElementById(arenaId);
-        const ARENA_WIDTH = Math.floor(arena.clientWidth) < arenaMaxSize
-            ? Math.floor(arena.clientWidth)
-            : arenaMaxSize;
-        const ARENA_HEIGHT = ARENA_WIDTH + Math.floor(0.25 * ARENA_WIDTH);
+
+        const arenaMaxWidth = unpixelify(window.getComputedStyle(arenaContainer).maxWidth);
+        const availableWidth = unpixelify(window.getComputedStyle(arenaContainer).width);
+
+        const ARENA_WIDTH = availableWidth > arenaMaxWidth
+            ? arenaMaxWidth
+            : availableWidth;
+        const ARENA_HEIGHT = ARENA_WIDTH;
 
         arena.setAttribute('width', ARENA_WIDTH);
         arena.setAttribute('height', ARENA_HEIGHT);
@@ -33,10 +39,24 @@ export default function () {
             ZeroPixels: utils.pixelify(0),
             Padding: utils.pixelify(5)
         };
-        const arenaConfig = utils.getConfig();
-        const directionMap = Object.keys(arenaConfig.directionMap)
+        const getById = utils.getDocument().getElementById.bind(utils.getDocument());
+        const {
+            id: arenaId,
+            arenaContainerId,
+            directionMap,
+            pauseButton,
+            resumeButton,
+            quitButton,
+            game: {
+                scoreBoard,
+                infoContainerId,
+                legendContainerId
+            },
+            eatables = {}
+        } = utils.getConfig();
+        const dirMap = Object.keys(directionMap)
             .reduce((acc, keyCode) => {
-                const direction = arenaConfig.directionMap[keyCode];
+                const direction = directionMap[keyCode];
                 acc[direction] = keyCode;
                 return acc;
             }, {
@@ -46,209 +66,272 @@ export default function () {
                 LEFT: null
             });
 
-        try {
+        const SNAKE_ARENA = getById(arenaId);
 
-            const PAUSE_BUTTON = (() => {
-                const btn = document.getElementById(arenaConfig.pauseButton.id);
-                btn.addEventListener('click', () => {
-                    utils.getGameEvents().emit('PAUSE_BUTTON_CLICKED');
-                });
-                return btn;
-            })();
+        const PAUSE_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            btn.addEventListener('click', () => {
+                utils.getGameEvents().emit('PAUSE_BUTTON_CLICKED');
+            });
+            return btn;
+        })(pauseButton.id);
 
-            const PLAY_BUTTON = (() => {
-                const btn = document.getElementById(arenaConfig.resumeButton.id);
-                btn.addEventListener('click', () => {
-                    utils.getGameEvents().emit('RESUME_BUTTON_CLICKED');
-                });
-                return btn;
-            })();
+        const PLAY_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            btn.addEventListener('click', () => {
+                utils.getGameEvents().emit('RESUME_BUTTON_CLICKED');
+            });
+            return btn;
+        })(resumeButton.id);
 
-            (() => {
-                const _legend_container = document.getElementById('legend-container');
-                // create legend keys
-                try {
-                    const {
-                        eatables = {}
-                    } = arenaConfig;
-                    Object.keys(eatables).forEach(eatableName => {
-                        const {
-                            description,
-                            showInLegend,
-                            color = 'white'
-                        } = eatables[eatableName];
-                        if (!showInLegend || !description) {
-                            return;
-                        }
-                        const legend = utils.createHTMLElement({
-                            parent: _legend_container,
-                            elementType: 'div',
-                            attributes: {
-                                style: utils.getStyleString(Object.assign({}, Styles.FlexCols, {
-                                    'margin-bottom': utils.pixelify(5),
-                                    'align-items': 'center',
-                                    border: `${utils.pixelify(1)} solid grey`,
-                                    padding: Styles.Padding + ' ' + Styles.Padding
-                                }))
-                            }
-                        });
-                        utils.createHTMLElement({
-                            parent: legend,
-                            elementType: 'div',
-                            attributes: {
-                                style: utils.getStyleString({
-                                    height: utils.pixelify(10),
-                                    width: utils.pixelify(10),
-                                    'background-color': color,
-                                    'border-radius': utils.pixelify(5)
-                                })
-                            }
-                        });
-                        utils.createHTMLElement({
-                            parent: legend,
-                            elementType: 'span',
-                            innerHTML: description,
-                            attributes: {
-                                style: utils.getStyleString(Object.assign(
-                                    {},
-                                    Styles.CapitalizeText,
-                                    {
-                                        padding: `${Styles.ZeroPixels} ${utils.pixelify(2)}`
-                                    })
-                                )
-                            }
-                        });
+        // eslint-disable-next-line no-unused-vars
+        const QUIT_BUTTON = (btnId => {
+            const btn = getById(btnId);
+            btn.addEventListener('click', () => {
+                utils.getGameEvents().emit('STOP_GAME');
+            });
+            return btn;
+        })(quitButton.id);
 
-                    });
-                } catch (e) {
-                    utils.LOGGER.warn(`Failed while drawing legend: ${e}`);
+        // Create lengends about the game
+        (containerId => {
+            const _legend_container = getById(containerId);
+            // create legend keys
+            Object.keys(eatables).forEach(eatableName => {
+                const {
+                    description,
+                    showInLegend,
+                    color = 'white'
+                } = eatables[eatableName];
+                if (!showInLegend || !description) {
+                    return;
                 }
-                return _legend_container;
-            })();
+                const legend = utils.createHTMLElement({
+                    parent: _legend_container,
+                    elementType: 'div',
+                    attributes: {
+                        class: 'cols universal-padding',
+                        style: utils.getStyleString(Object.assign({}, {
+                            'align-items': 'center'
+                        }))
+                    }
+                });
+                utils.createHTMLElement({
+                    parent: legend,
+                    elementType: 'div',
+                    attributes: {
+                        style: utils.getStyleString({
+                            height: utils.pixelify(10),
+                            width: utils.pixelify(10),
+                            'background-color': color,
+                            'border-radius': utils.pixelify(5)
+                        })
+                    }
+                });
+                utils.createHTMLElement({
+                    parent: legend,
+                    elementType: 'span',
+                    innerHTML: description,
+                    attributes: {
+                        style: utils.getStyleString(Object.assign(
+                            {},
+                            Styles.CapitalizeText,
+                            {
+                                padding: `${Styles.ZeroPixels} ${utils.pixelify(2)}`
+                            })
+                        )
+                    }
+                });
 
-            const SCORE_BOARD = document.getElementById('score');
+            });
+            return _legend_container;
+        })(legendContainerId);
 
-            // eslint-disable-next-line no-unused-vars
-            const arenaContainer = (() => {
-                let initialTouchPos;
-                const elem = document.getElementById('arena-section');
-                elem.addEventListener('touchstart', event => {
-                    event.preventDefault();
-                    if (event.touches && event.touches.length > 1) {
-                        return;
-                    }
-                    const point = {};
-                    if (event.targetTouches) {
-                        point.x = event.targetTouches[0].clientX;
-                        point.y = event.targetTouches[0].clientY;
-                    }
-                    initialTouchPos = point;
-                }, true);
-                elem.addEventListener('touchmove', event => {
-                    event.preventDefault();
-                }, true);
-                elem.addEventListener('touchend', event => {
-                    event.preventDefault();
-                    const [x1, y1] = [parseInt(initialTouchPos.x), parseInt(initialTouchPos.y)];
-                    initialTouchPos = null;
-                    const touchList = event.changedTouches;
-                    const lastTouch = touchList[0];
-                    const [x2, y2] = [parseInt(lastTouch.clientX), parseInt(lastTouch.clientY)];
-                    if (x1 === x2 && y1 === y2) {
-                        // did not swipe
-                        return;
-                    }
-                    const xdistance = x2 - x1;
-                    const ydistance = y2 - y1;
-                    if (Math.abs(xdistance) === Math.abs(ydistance)) {
-                        // swiped diagonal
-                        return;
-                    }
-                    if (xdistance === 0) {
-                        if (ydistance > 0) {
-                            // swiped down
-                            utils.getGameEvents().emit(
-                                'SNAKE_DIRECTION_CHANGE',
-                                { direction: directionMap.DOWN }
-                            );
-                            return;
-                        }
-                        // swiped up
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.UP }
-                        );
-                        return;
-
-                    } else if (ydistance === 0) {
-                        if (xdistance > 0) {
-                            //swiped right
-                            utils.getGameEvents().emit(
-                                'SNAKE_DIRECTION_CHANGE',
-                                { direction: directionMap.RIGHT }
-                            );
-                            return;
-                        }
-                        // swiped left
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.LEFT }
-                        );
-                        return;
-                    }
-
-                    if (xdistance > 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.RIGHT }
-                        );
-                        // swiped right
-                        return;
-                    }
-                    if (xdistance < 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.LEFT }
-                        );
-                        // swiped left
-                        return;
-                    }
-                    if (ydistance > 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.DOWN }
-                        );
-                        // swiped down
-                        return
-                    }
-                    if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
-                        utils.getGameEvents().emit(
-                            'SNAKE_DIRECTION_CHANGE',
-                            { direction: directionMap.UP }
-                        );
-                        // swiped up
-                        return;
-                    }
-                }, true);
-                elem.addEventListener('touchcancel', event => {
-                    event.preventDefault();
-                    initialTouchPos = null;
-                }, true);
-                return elem;
-            })();
-
-            const SNAKE_ARENA = document.getElementById(arenaConfig.id);
-
-            return {
-                SNAKE_ARENA,
-                PLAY_BUTTON,
-                PAUSE_BUTTON,
-                SCORE_BOARD
+        // eslint-disable-next-line no-unused-vars
+        const arenaContainer = (sectionId => {
+            let initialTouchPos = {}, swipeRecorded = false;
+            const clearTouchMemory = event => {
+                event
+                    ? event.preventDefault()
+                    : undefined;
+                initialTouchPos = {};
+                swipeRecorded = false;
             };
-        } catch (error) {
-            utils.LOGGER.error(`Failed to setup the page: ${error}`);
-            throw error;
-        }
+            const elem = getById(sectionId);
+            // Handle swipe actions
+            elem.addEventListener('touchstart', event => {
+                event.preventDefault();
+                if (event.touches && event.touches.length > 1) {
+                    return;
+                }
+                if (event.targetTouches && event.targetTouches.length > 0) {
+                    initialTouchPos.x = parseInt(event.targetTouches[0].clientX);
+                    initialTouchPos.y = parseInt(event.targetTouches[0].clientY);
+                }
+            }, true);
+            elem.addEventListener('touchmove', event => {
+                event.preventDefault();
+                if (swipeRecorded) {
+                    return;
+                }
+                const { x: x1, y: y1 } = initialTouchPos;
+                initialTouchPos = {};
+                const { clientX, clientY } = event.changedTouches[0];
+                const [x2, y2] = [parseInt(clientX), parseInt(clientY)];
+                const [xdistance, ydistance] = [x2 - x1, y2 - y1];
+                // Do nothing if did not swipe or swiped diagonal
+                if ((x1 === x2 && y1 === y2) ||
+                    (Math.abs(xdistance) === Math.abs(ydistance))) {
+                    return;
+                }
+                const emit = direction => {
+                    utils.getGameEvents().emit(
+                        'SNAKE_DIRECTION_CHANGE',
+                        { direction }
+                    );
+                    swipeRecorded = true;
+                }
+                if (xdistance === 0) {
+                    return (ydistance > 0)
+                        ? emit(dirMap.DOWN)
+                        : emit(dirMap.UP);
+                }
+                if (ydistance === 0) {
+                    return (xdistance > 0)
+                        ? emit(dirMap.RIGHT)
+                        : emit(dirMap.LEFT);
+                }
+                if (xdistance > 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
+                    return emit(dirMap.RIGHT);
+                }
+                if (xdistance < 0 && Math.abs(xdistance) > Math.abs(ydistance)) {
+                    return emit(dirMap.LEFT);
+                }
+                if (ydistance > 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
+                    return emit(dirMap.DOWN);
+                }
+                if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
+                    return emit(dirMap.UP);
+                }
+                return;
+            }, true);
+            elem.addEventListener('touchend', clearTouchMemory, true);
+            elem.addEventListener('touchcancel', clearTouchMemory, true);
+            return elem;
+        })(arenaContainerId);
+
+        const SCORE_BOARD = getById(scoreBoard.id);
+
+        const MODAL = ((sectionId, modalContentId, btn1Id, btn2Id, btnsContainerId) => {
+            const [section, button1, button2, modalContentSpace, btnsContainer] = [
+                sectionId, btn1Id, btn2Id, modalContentId, btnsContainerId
+            ].map(getById);
+            const createdElements = [];
+            const hideModal = () => {
+                section.style.display = 'none';
+                createdElements.forEach(e => e.remove());
+                button1.innerHTML = 'no';
+                button2.innerHTML = 'yes';
+                button1.style.display = 'block';
+                button2.style.display = 'block';
+            };
+            /**
+             * 
+             * @param {Object} config 
+             * @param {string[]=} config.elementIds
+             * @param {string|string[]=} config.texts
+             * @param {Object} config.btn1
+             * @param {string=} config.btn1.label
+             * @param {Function=} config.btn1.clickHandler
+             * @param {boolean} config.btn1.show
+             * @param {Object} config.btn2
+             * @param {string=} config.btn2.label
+             * @param {Function=} config.btn2.clickHandler
+             * @param {boolean} config.btn2.show
+             */
+            const showModal = config => {
+                let {
+                    elementIds = [],
+                    texts = [],
+                    btn1,
+                    btn2
+                } = config;
+                btn1 = btn1 || {};
+                btn2 = btn2 || {};
+                elementIds = Array.isArray(elementIds)
+                    ? elementIds
+                    : [elementIds];
+                texts = Array.isArray(texts)
+                    ? texts
+                    : [texts];
+                elementIds.forEach(id => {
+                    if (!id) {
+                        return;
+                    }
+                    const _clone = getById(id).cloneNode(true);
+                    createdElements.push(_clone);
+                    modalContentSpace.insertBefore(_clone, btnsContainer);
+                });
+                texts.forEach(t => createdElements.push(utils.createHTMLElement({
+                    elementType: 'p',
+                    parent: modalContentSpace,
+                    innerHTML: t,
+                    beforeElement: btnsContainer,
+                    attributes: {
+                        class: 'text-center'
+                    }
+                })));
+                button1.innerHTML = btn1.label
+                    ? btn1.label
+                    : button1.innerHTML;
+                button2.innerHTML = btn2.label
+                    ? btn2.label
+                    : button2.innerHTML;
+                button1.style.display = typeof btn1.show === 'boolean'
+                    ? btn1.show
+                        ? 'block'
+                        : 'none'
+                    : button1.style.display;
+                button2.style.display = typeof btn2.show === 'boolean'
+                    ? btn2.show
+                        ? 'block'
+                        : 'none'
+                    : button2.style.display;
+                if (typeof btn1.clickHandler === 'function') {
+                    button1.addEventListener('click', btn1.clickHandler, { once: true });
+                }
+                if (typeof btn2.clickHandler === 'function') {
+                    button2.addEventListener('click', btn2.clickHandler, { once: true });
+                }
+                button1.addEventListener('click', hideModal, { once: true });
+                button2.addEventListener('click', hideModal, { once: true });
+                section.style.display = 'block';
+            };
+            return {
+                show: showModal,
+                hide: hideModal
+            };
+        })(
+            'modal-container',
+            'modal-content',
+            'modal-content-btn-1',
+            'modal-content-btn-2',
+            'modal-content-btns-container'
+        );
+
+        getById(infoContainerId).addEventListener(
+            'click',
+            () => utils.getGameEvents().emit('SHOW_GAME_INFO')
+        );
+
+        return {
+            SNAKE_ARENA,
+            PLAY_BUTTON,
+            PAUSE_BUTTON,
+            SCORE_BOARD,
+            MODAL
+        };
+
     };
 
     return {
