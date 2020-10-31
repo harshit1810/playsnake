@@ -16,6 +16,13 @@
       padding: 5px 5px;
     }
 
+    button {
+      border-radius: 3px;
+      text-align: center;
+      border: none;
+      text-transform: capitalize;
+    }
+
     .rows {
       display: flex;
       flex-direction: column;
@@ -34,23 +41,32 @@
       text-align: center;
     }
 
+    .bg-transparent {
+      background: transparent;
+    }
+
     #pause-play-snake {
-      flex: 0 1 20%;
+      flex: 0 1 auto;
       order: 0;
     }
 
     #resume-play-snake {
-      flex: 0 1 20%;
+      flex: 0 1 auto;
       order: 1;
-      margin-left: 5px;
+    }
+
+    #quit-play-snake {
+      flex: 0 1 auto;
+      order: 2;
     }
 
     #game-controls {
-      justify-content: flex-start;
+      justify-content: space-between;
+      flex: 0 1 40%;
     }
 
-    #game-controls>button {
-      border-radius: 5px;
+    #game-controls > button {
+      width: 60px;
     }
 
     #legend-container {
@@ -60,32 +76,204 @@
 
     #score {
       font-weight: bold;
+      padding-left: 5px;
     }
 
     #arena-section {
       flex-wrap: wrap;
-      width: 100%;
+      max-width: 500px;
     }
 
     #play-snake-arena {
       border: 1px solid black;
     }
+
+    #modal-container {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    #modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      width: 80%;
+    }
+
+    #modal-content-btns-container {
+      justify-content: space-around;
+      margin-top: 10px;
+    }
+
+    #modal-content-btns-container>button {
+      width: 20%;
+      max-width: 20%;
+      display: block;
+    }
+
+    #score-section>div:nth-child(1) {
+      flex: 0 1 20%;
+    }
+
+    #score-section>div:nth-child(2) {
+      flex: 0 1 80%;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .info-icon {
+      color: white;
+      font-weight: bold;
+      background-color: #42adf5;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      width: 20px;
+    }
+
+    #game-info-container {
+      visibility: hidden;
+    }
+
+    #game-info {
+      font-style: italic;
+      align-items: baseline;
+    }
+
+    #game-info-desc {
+      margin-left: 5px;
+      font-size: small;
+      color: grey;
+    }
+
+    #game-progress-container {
+      flex-wrap: wrap;
+      background-color: white;
+      border: none;
+      margin-bottom: 5px;
+    }
+
+    .timer {
+      position: relative;
+      background: white;
+      width: 50px;
+      height: 50px;
+      display: none;
+    }
+
+    .timer,
+    .timer * {
+      -moz-box-sizing: border-box;
+      -webkit-box-sizing: border-box;
+      box-sizing: border-box;
+    }
+
+    .timer>.timer-pie {
+      width: 50%;
+      height: 100%;
+      transform-origin: 100% 50%;
+      position: absolute;
+      background: green;
+    }
+
+    .timer>.timer-spinner {
+      border-radius: 100% 0 0 100% / 50% 0 0 50%;
+      z-index: 200;
+      border-right: none;
+      animation: rotate 60s linear forwards;
+    }
+
+    .timer:hover .timer-spinner,
+    .timer:hover .timer-filler,
+    .timer:hover .timer-mask {
+      animation-play-state: running;
+    }
+
+    .timer>.timer-filler {
+      border-radius: 0 100% 100% 0 / 0 50% 50% 0;
+      left: 50%;
+      opacity: 0;
+      z-index: 100;
+      animation: opa 60s steps(1, end) forwards reverse;
+      border-left: none;
+    }
+
+    .timer>.timer-mask {
+      width: 50%;
+      height: 100%;
+      position: absolute;
+      background: inherit;
+      opacity: 1;
+      z-index: 300;
+      animation: opa 60s steps(1, end) forwards;
+    }
+
+    @keyframes rotate {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes opa {
+      0% {
+        opacity: 1;
+      }
+
+      50%,
+      100% {
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <section class="cols universal-padding" id="game-controls">
-    <button id="pause-play-snake" class="capitalize universal-padding text-center">pause</button>
-    <button id="resume-play-snake" class="capitalize universal-padding text-center" disabled>resume</button>
-  </section>
-  <section id="legend-container" class="cols universal-padding"></section>
+  <div id="game-info" class="cols universal-padding">
+    <div class="info-icon text-center">i</div>
+    <span id="game-info-desc">Click to see info about the game</span>
+  </div>
   <section id="score-section" class="cols universal-padding">
-    Score:&nbsp
-    <span id="score">0</span>
+    <div>
+      <span>Score:</span>
+      <span id="score">0</span>
+    </div>
   </section>
   <section id="arena-section" class="rows universal-padding">
+    <div id="game-progress-container" class="cols">
+      <div id="game-controls" class="cols">
+        <button id="pause-play-snake" class="universal-padding">pause</button>
+        <button id="resume-play-snake" class="universal-padding" disabled>resume</button>
+        <button id="quit-play-snake" class="universal-padding">quit</button>
+      </div>
+    </div>
     <svg id="play-snake-arena"></svg>
   </section>
+  <section id="modal-container">
+    <div id="modal-content" class="universal-padding">
+      <div id="modal-content-btns-container" class="cols">
+        <button id="modal-content-btn-1" class="universal-padding">no</button>
+        <button id="modal-content-btn-2" class="universal-padding">yes</button>
+      </div>
+    </div>
+  </section>
+  <div id="game-info-container" class="rows">
+    <div id="legend-container" class="rows"></div>
+  </div>
+  <div class="timer">
+    <div class="timer-pie timer-spinner"></div>
+    <div class="timer-pie timer-filler"></div>
+    <div class="timer-mask"></div>
+  </div>
   <script type="text/javascript" src="playsnake.min.js"></script>
 </body>
 

@@ -45,6 +45,12 @@ export default function () {
             ({ direction }) => {
                 gameInstance.handleSnakeDirectionChange(parseInt(direction));
             }
+        ],
+        SHOW_GAME_INFO: [
+            () => gameInstance.showGameInfo()
+        ],
+        SCORE_CHECKPOINT: [
+            checkpointIndex => gameInstance.processScoreCheckpoint(checkpointIndex)
         ]
     };
 

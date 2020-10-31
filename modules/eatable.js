@@ -28,21 +28,16 @@ export default function (utils) {
         const element = utils.createHTMLElement({
             elementType: elemType,
             elementNamespace: utils.getSvgNamespace(),
-            attributes: {
-                id,
-                cx,
-                cy,
-                r: size,
-                fill: color
-            },
+            attributes: { id, cx, cy, r: size, fill: color },
             parent: utils.getGame().arena,
             beforeElement: utils.getGame().getSnake().head.element
         });
-        let [x2, y2] = [cx + (size - 1), cy + (size - 1)];
+        const radius = size;
         // used if this eatable is interval based
         let intervalId;
 
         return {
+            radius,
             get isIntervalBased() {
                 return isIntervalBased;
             },
@@ -67,32 +62,20 @@ export default function (utils) {
             get size() {
                 return size;
             },
-            get x2() {
-                return x2;
+            get x() {
+                return this.getCenter().x - (radius - 1);
             },
-            set x2(v) {
-                x2 = v;
+            get y() {
+                return this.getCenter().y - (radius - 1);
+            },
+            get x2() {
+                return this.getCenter().x + (radius - 1);
             },
             get y2() {
-                return y2;
-            },
-            set y2(v) {
-                y2 = v;
+                return this.getCenter().y + (radius - 1);
             },
             get points() {
                 return parseInt(points);
-            },
-            get x() {
-                return parseInt(this.element.getAttribute('cx'));
-            },
-            set x(value) {
-                this.element.setAttribute('cx', Math.floor(value));
-            },
-            get y() {
-                return parseInt(this.element.getAttribute('cy'));
-            },
-            set y(value) {
-                this.element.setAttribute('cy', Math.floor(value));
             },
             get appearDuration() {
                 return appearDuration;
@@ -102,6 +85,16 @@ export default function (utils) {
             },
             get growSnakeByLength() {
                 return growSnakeByLength;
+            },
+            getCenter: function () {
+                return {
+                    x: parseInt(this.element.getAttribute('cx')),
+                    y: parseInt(this.element.getAttribute('cy'))
+                };
+            },
+            setCenter: function ({ x, y }) {
+                this.element.setAttribute('cx', x);
+                this.element.setAttribute('cy', y);
             },
             startInterval: function () {
                 const self = this;
@@ -115,18 +108,17 @@ export default function (utils) {
                 return self.intervalId;
             },
             drop: function () {
-                const { x, y } = getNextEatablePosition(this.limits, this.size);
-                this.x = x;
-                this.y = y;
+                const self = this;
+                const { x, y } = getNextEatablePosition(self.limits, self.size);
+                self.setCenter({ x, y });
                 // if this eatable is configured to appear for some amount of time
                 // schedule it's removal
-                if (typeof this.appearDuration === 'number') {
-                    setTimeout(this.hide.bind(this), this.appearDuration * 1000);
+                if (typeof self.appearDuration === 'number') {
+                    setTimeout(self.hide.bind(self), self.appearDuration * 1000);
                 }
             },
             hide: function () {
-                this.x = -10;
-                this.y = -10;
+                this.setCenter({ x: -10, y: -10 });
             }
         };
     }
