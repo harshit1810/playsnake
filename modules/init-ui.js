@@ -152,13 +152,9 @@ export default function () {
 
         // eslint-disable-next-line no-unused-vars
         const arenaContainer = (sectionId => {
-            let initialTouchPos = {}, swipeRecorded = false;
-            const clearTouchMemory = event => {
-                event
-                    ? event.preventDefault()
-                    : undefined;
+            let initialTouchPos = {};
+            const clearTouchMemory = () => {
                 initialTouchPos = {};
-                swipeRecorded = false;
             };
             const elem = getById(sectionId);
             const emit = direction => {
@@ -166,7 +162,7 @@ export default function () {
                     'SNAKE_DIRECTION_CHANGE',
                     { direction }
                 );
-                swipeRecorded = true;
+                clearTouchMemory();
             }
             // Handle swipe actions
             elem.addEventListener('touchstart', event => {
@@ -175,14 +171,10 @@ export default function () {
                     initialTouchPos.x = parseInt(event.targetTouches[0].clientX);
                     initialTouchPos.y = parseInt(event.targetTouches[0].clientY);
                 }
-            }, true);
-            elem.addEventListener('touchmove', event => {
-                event.preventDefault();
-                if (swipeRecorded) {
-                    return;
-                }
+            });
+            elem.addEventListener('touchmove', () => {});
+            elem.addEventListener('touchend', event => {
                 const { x: x1, y: y1 } = initialTouchPos;
-                initialTouchPos = {};
                 const { clientX, clientY } = event.changedTouches[0];
                 const [x2, y2] = [parseInt(clientX), parseInt(clientY)];
                 const [xdistance, ydistance] = [x2 - x1, y2 - y1];
@@ -213,10 +205,8 @@ export default function () {
                 if (ydistance < 0 && Math.abs(ydistance) > Math.abs(xdistance)) {
                     return emit(dirMap.UP);
                 }
-                return;
-            }, true);
-            elem.addEventListener('touchend', clearTouchMemory, true);
-            elem.addEventListener('touchcancel', clearTouchMemory, true);
+            });
+            elem.addEventListener('touchcancel', clearTouchMemory);
             return elem;
         })(arenaContainerId);
 
