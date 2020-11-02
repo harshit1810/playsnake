@@ -65,12 +65,15 @@ export default function () {
                 RIGHT: null,
                 LEFT: null
             });
-
+        const addClickHandler = (elem, cb, options = {}) => {
+            elem.addEventListener('click', cb);
+            elem.addEventListener('touchstart', cb, options);
+        };
         const SNAKE_ARENA = getById(arenaId);
 
         const PAUSE_BUTTON = (btnId => {
             const btn = getById(btnId);
-            btn.addEventListener('click', () => {
+            addClickHandler(btn, () => {
                 utils.getGameEvents().emit('PAUSE_BUTTON_CLICKED');
             });
             return btn;
@@ -78,7 +81,7 @@ export default function () {
 
         const PLAY_BUTTON = (btnId => {
             const btn = getById(btnId);
-            btn.addEventListener('click', () => {
+            addClickHandler(btn, () => {
                 utils.getGameEvents().emit('RESUME_BUTTON_CLICKED');
             });
             return btn;
@@ -87,7 +90,7 @@ export default function () {
         // eslint-disable-next-line no-unused-vars
         const QUIT_BUTTON = (btnId => {
             const btn = getById(btnId);
-            btn.addEventListener('click', () => {
+            addClickHandler(btn, () => {
                 utils.getGameEvents().emit('STOP_GAME');
             });
             return btn;
@@ -158,12 +161,16 @@ export default function () {
                 swipeRecorded = false;
             };
             const elem = getById(sectionId);
+            const emit = direction => {
+                utils.getGameEvents().emit(
+                    'SNAKE_DIRECTION_CHANGE',
+                    { direction }
+                );
+                swipeRecorded = true;
+            }
             // Handle swipe actions
             elem.addEventListener('touchstart', event => {
                 event.preventDefault();
-                if (event.touches && event.touches.length > 1) {
-                    return;
-                }
                 if (event.targetTouches && event.targetTouches.length > 0) {
                     initialTouchPos.x = parseInt(event.targetTouches[0].clientX);
                     initialTouchPos.y = parseInt(event.targetTouches[0].clientY);
@@ -183,13 +190,6 @@ export default function () {
                 if ((x1 === x2 && y1 === y2) ||
                     (Math.abs(xdistance) === Math.abs(ydistance))) {
                     return;
-                }
-                const emit = direction => {
-                    utils.getGameEvents().emit(
-                        'SNAKE_DIRECTION_CHANGE',
-                        { direction }
-                    );
-                    swipeRecorded = true;
                 }
                 if (xdistance === 0) {
                     return (ydistance > 0)
@@ -298,13 +298,13 @@ export default function () {
                         : 'none'
                     : button2.style.display;
                 if (typeof btn1.clickHandler === 'function') {
-                    button1.addEventListener('click', btn1.clickHandler, { once: true });
+                    addClickHandler(button1, btn1.clickHandler, { once: true });
                 }
                 if (typeof btn2.clickHandler === 'function') {
-                    button2.addEventListener('click', btn2.clickHandler, { once: true });
+                    addClickHandler(button2, btn2.clickHandler, { once: true });
                 }
-                button1.addEventListener('click', hideModal, { once: true });
-                button2.addEventListener('click', hideModal, { once: true });
+                addClickHandler(button1, hideModal, { once: true });
+                addClickHandler(button2, hideModal, { once: true });
                 section.style.display = 'block';
             };
             return {
@@ -319,8 +319,8 @@ export default function () {
             'modal-content-btns-container'
         );
 
-        getById(infoContainerId).addEventListener(
-            'click',
+        addClickHandler(
+            getById(infoContainerId), 
             () => utils.getGameEvents().emit('SHOW_GAME_INFO')
         );
 
