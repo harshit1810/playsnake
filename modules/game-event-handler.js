@@ -2,55 +2,42 @@ export default function () {
     let gameInstance;
     let events = {
         PAUSE_BUTTON_CLICKED: [
-            () => {
-                gameInstance.pause();
-            }
+            () => gameInstance.pause()
         ],
         RESUME_BUTTON_CLICKED: [
-            () => {
-                gameInstance.resume();
-            }
+            () => gameInstance.resume()
         ],
         STOP_GAME: [
             () => gameInstance.stop()
         ],
         EATABLE_CONSUMED: [
-            eatable => {
-                eatable.hide();
-            },
-            eatable => {
-                if (typeof eatable.points !== 'number') {
-                    return;
-                }
-                emitEvent('UPDATE_SCORE', eatable.points);
-            },
-            eatable => {
-                gameInstance.growSnake(eatable)
-            }
+            eatable => eatable.hide(),
+            eatable => emitEvent('UPDATE_SCORE', eatable.points),
+            eatable => gameInstance.growSnake(eatable),
+            eatable => !eatable.isIntervalBased 
+                ? emitEvent('DROP_EATABLE', eatable)
+                : undefined
         ],
         UPDATE_SCORE: [
-            points => {
-                gameInstance.updateScore(points);
-            }
+            points => gameInstance.updateScore(points)
         ],
         USE_SPEED_BONUS: [
-            () => {
-                gameInstance.increaseSnakeSpeed();
-            }
+            () => gameInstance.increaseSnakeSpeed()
         ],
         DEVOURED_SELF: [
             () => emitEvent('STOP_GAME')
         ],
         SNAKE_DIRECTION_CHANGE: [
-            ({ direction }) => {
-                gameInstance.handleSnakeDirectionChange(parseInt(direction));
-            }
+            ({ direction }) => gameInstance.handleSnakeDirectionChange(parseInt(direction))
         ],
         SHOW_GAME_INFO: [
             () => gameInstance.showGameInfo()
         ],
         SCORE_CHECKPOINT: [
             checkpointIndex => gameInstance.processScoreCheckpoint(checkpointIndex)
+        ],
+        DROP_EATABLE: [
+            eatable => gameInstance.dropEatable(eatable)
         ]
     };
 

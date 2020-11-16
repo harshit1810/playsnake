@@ -111,10 +111,7 @@ export default function (utils) {
                 if (self.snakeFood) {
                     return self.snakeFood;
                 }
-                const { x, y } = getNextEatablePosition(
-                    config.eatables.basicFood.limits,
-                    config.eatables.basicFood.size
-                );
+                const { x, y } = getNextEatablePosition(config.eatables.limits);
                 self.snakeFood = createEatableItem(
                     self.arena,
                     x,
@@ -136,6 +133,28 @@ export default function (utils) {
                 );
                 return self.snakeBonusFood;
             },
+            /**
+             * 
+             * @param {Object} param 
+             * @param {boolean?} param.hidden fetch hidden eatables also
+             * @returns {Object[]}
+             */
+            getEatables: function (param) {
+                const {
+                    hidden = false
+                } = param || {};
+                return [
+                    this.getBasicFood(),
+                    this.getSnakeBonusFood(),
+                    this.getSpeedBonusFood()
+                ].reduce((acc, obj) => {
+                    if (!hidden && obj.hidden) { 
+                        return acc; 
+                    }
+                    acc.push(obj);
+                    return acc;
+                }, []);
+            },
             start: function () {
                 const self = this;
                 try {
@@ -147,9 +166,11 @@ export default function (utils) {
                     self.setButtonListeners();
                 } catch (error) {
                     self.showModal({
-                        modalConfig: {texts: message.START_GAME,
+                        modalConfig: {
+                            texts: message.START_GAME,
                             btn1: { show: false },
-                            btn2: { label: 'ok' }}
+                            btn2: { label: 'ok' }
+                        }
                     });
                     throw error;
                 }
@@ -280,6 +301,9 @@ export default function (utils) {
                 return parseInt(gameControls.scoreBoard.innerHTML);
             },
             updateScore: function (points) {
+                if (typeof points !== 'number') { 
+                    return; 
+                }
                 const newScore = parseInt(gameControls.scoreBoard.innerHTML) + points;
                 gameControls.scoreBoard.innerHTML = newScore;
                 if (newScore > 0 && newScore % config.game.scoreCheckpointMultipleOf === 0) {
@@ -321,6 +345,25 @@ export default function (utils) {
                     ? this.pause() 
                     : undefined;
                 MODAL.show(modalConfig);
+            },
+            dropEatable: function(eatable) {
+                if (!eatable) {
+                    return;
+                }
+                const invalidCoordinates = [
+                    ...this.getSnake().bodyParts,
+                    ...this.getEatables()
+                ].reduce((acc, element) => {
+                    if (!element || !element.x || !element.y || !element.x2 || !element.y2) {
+                        return acc;
+                    }
+                    acc.push({ 
+                        x1: element.x, y1: element.y,
+                        x2: element.x2, y2: element.y2
+                    });
+                    return acc;
+                }, []);
+                eatable.drop(invalidCoordinates);
             }
         };
     }

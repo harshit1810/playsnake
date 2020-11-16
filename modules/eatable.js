@@ -2,18 +2,14 @@ export default function (utils) {
 
     const config = utils.getConfig();
 
-    const {
-        width: snakeWidth
-    } = config.snake;
-
     function createEatableItem(arena, cx, cy, code) {
 
         if (!config.eatables[code]) {
             return utils.LOGGER.warn(`item ${code} is not configured`);
         }
+        const { limits } = config.eatables;
         const {
             id,
-            limits,
             elemType,
             color,
             size,
@@ -34,7 +30,7 @@ export default function (utils) {
         });
         const radius = size;
         // used if this eatable is interval based
-        let intervalId;
+        let intervalId, _isHidden = true;
 
         return {
             radius,
@@ -47,9 +43,6 @@ export default function (utils) {
             get arena() {
                 return arena;
             },
-            get limits() {
-                return limits;
-            },
             get intervalId() {
                 return intervalId;
             },
@@ -58,9 +51,6 @@ export default function (utils) {
             },
             get startAfter() {
                 return startAfter;
-            },
-            get size() {
-                return size;
             },
             get x() {
                 return this.getCenter().x - (radius - 1);
@@ -86,6 +76,15 @@ export default function (utils) {
             get growSnakeByLength() {
                 return growSnakeByLength;
             },
+            get isHidden() {
+                return _isHidden;
+            },
+            set isHidden(b) {
+                _isHidden = b;
+            },
+            getCode: function () {
+                return code;
+            },
             getCenter: function () {
                 return {
                     x: parseInt(this.element.getAttribute('cx')),
@@ -101,16 +100,18 @@ export default function (utils) {
                 if (!self.isIntervalBased) {
                     return;
                 }
+                // emit drop event to show interval based eatables
                 self.intervalId = setInterval(
-                    self.drop.bind(self),
+                    () => utils.getGameEvents().emit('DROP_EATABLE', self),
                     self.startAfter * 1000
                 );
                 return self.intervalId;
             },
-            drop: function () {
+            drop: function (invalidPositions = []) {
                 const self = this;
-                const { x, y } = getNextEatablePosition(self.limits, self.size);
+                const { x, y } = getNextEatablePosition(limits, invalidPositions);
                 self.setCenter({ x, y });
+                self.isHidden = false;
                 // if this eatable is configured to appear for some amount of time
                 // schedule it's removal
                 if (typeof self.appearDuration === 'number') {
@@ -119,34 +120,34 @@ export default function (utils) {
             },
             hide: function () {
                 this.setCenter({ x: -10, y: -10 });
+                this.isHidden = true;
             }
         };
     }
 
-    /**
-     * 
-     * @param {Object} limits 
-     * @param {number} limits.x
-     * @param {number} limits.y
-     * @param {number} foodSize
-     */
-    function getNextEatablePosition(limits, foodSize) {
-        function getRandomX() {
-            return Math.floor(Math.random() * (limits.x - foodSize)) +
-                config.borderWidth + 1;
-        }
-        function getRandomY() {
-            return Math.floor(Math.random() * (limits.y - foodSize)) +
-                config.borderWidth + 1;
-        }
-        let _x, _y;
+    function getNextEatablePosition(limits, invalidPositions) {
+        let x, y, x1, y1, x2, y2;
+        invalidPositions = invalidPositions || [
+            { x1: 0, x2: 0 },
+            { y1: 0, y2: 0 }
+        ];
+        const radius = config.eatables.eatableRadius;
         do {
-            [_x, _y] = [getRandomX(), getRandomY()];
-        } while (_x % snakeWidth !== 0 && _y % snakeWidth !== 0);
-        return {
-            x: _x + 2,
-            y: _y + 2
-        };
+            [x, y] = [
+                utils.getRandomInRange(limits.x1, limits.x2), 
+                utils.getRandomInRange(limits.y1, limits.y2)
+            ];
+            [x1, y1, x2, y2] = [
+                x - (radius - 1), y - (radius - 1),
+                x + (radius - 1), y + (radius - 1)
+            ];
+        } while (
+            invalidPositions.every(pos => {
+                !utils.intersectingOnXAxis({ x1, x2 }, { x1: pos.x1, x2: pos.x2 }) &&
+                !utils.intersectingOnYAxis({ y1, y2 }, { y1: pos.y1, y2: pos.y2 })
+            })
+        );
+        return { x, y };
     }
 
     return {
