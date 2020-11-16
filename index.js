@@ -27,12 +27,10 @@ const PLAY_SNAKE = function () {
         const eatableRadius = snakeWidth / 2;
         const defaultSnakeGrowLength = 1;
         const limits = {
-            x: ARENA_WIDTH - (borderWidth * 2),
-            y: ARENA_HEIGHT - (borderWidth * 2)
-        };
-        const eatablePositionLimits = {
-            x: limits.x - (snakeWidth * 2),
-            y: limits.y - (snakeWidth * 2)
+            x1: borderWidth * 2,
+            y1: borderWidth * 2,
+            x2: ARENA_WIDTH - (borderWidth * 2),
+            y2: ARENA_HEIGHT - (borderWidth * 2)
         };
 
         return {
@@ -104,6 +102,13 @@ const PLAY_SNAKE = function () {
                 turboSpeed: snakeSpeed / 4
             },
             eatables: {
+                eatableRadius,
+                limits: {
+                    x1: limits.x1 + snakeWidth,
+                    y1: limits.y1 + snakeWidth,
+                    x2: limits.x2 - snakeWidth,
+                    y2: limits.y2 - snakeWidth
+                },
                 basicFood: {
                     id: 'the-snake-food',
                     color: '#aba99f',
@@ -114,7 +119,6 @@ const PLAY_SNAKE = function () {
                     startAfter: 0,
                     elemType: 'circle',
                     size: eatableRadius,
-                    limits: eatablePositionLimits,
                     isIntervalBased: false,
                     code: 'basicFood',
                     growSnakeIfConsumed: true,
@@ -130,7 +134,6 @@ const PLAY_SNAKE = function () {
                     startAfter: 30,
                     elemType: 'circle',
                     size: eatableRadius,
-                    limits: eatablePositionLimits,
                     isIntervalBased: true,
                     code: 'bonusFood',
                     growSnakeIfConsumed: false,
@@ -147,7 +150,6 @@ const PLAY_SNAKE = function () {
                     elemType: 'circle',
                     size: eatableRadius,
                     speedDuration: 10,
-                    limits: eatablePositionLimits,
                     isIntervalBased: true,
                     code: 'speedBonus',
                     growSnakeIfConsumed: false,
@@ -159,8 +161,6 @@ const PLAY_SNAKE = function () {
         arenaId: ARENA_ID,
         arenaContainerId
     }));
-    Object.freeze(CONFIG);
-
     const SNAKE_DIRECTION_MAP = {};
 
     let game, COMMAND_STACK;
@@ -256,27 +256,26 @@ const PLAY_SNAKE = function () {
          * @returns {Object} new coordinates if an object is going out of bounds.
          */
         checkBoundaryPosition(direction, position) {
-            const { borderWidth, limits } = this.getConfig();
-            const snakeWidth = this.getConfig().snake.width;
+            const { limits } = this.getConfig();
             switch (direction) {
             case 37:
-                if (position.x < borderWidth) {
-                    position.x = limits.x - snakeWidth;
+                if (position.x < limits.x1) {
+                    position.x = limits.x2;
                 }
                 break;
             case 38:
-                if (position.y < borderWidth) {
-                    position.y = limits.y - snakeWidth;
+                if (position.y < limits.y1) {
+                    position.y = limits.y2;
                 }
                 break;
             case 39:
-                if (position.x + snakeWidth > limits.x) {
-                    position.x = borderWidth;
+                if (position.x > limits.x2) {
+                    position.x = limits.x1;
                 }
                 break;
             case 40:
-                if (position.y + snakeWidth > limits.y) {
-                    position.y = borderWidth;
+                if (position.y > limits.y2) {
+                    position.y = limits.y1;
                 }
                 break;
             }
@@ -286,16 +285,19 @@ const PLAY_SNAKE = function () {
             return DISPLAY_MESSAGES;
         },
         intersectingOnXAxis: function (obj1, obj2) {
-            return (obj2.x1 < obj1.x1 && obj1.x1 < obj2.x2) ||
-                (obj2.x1 < obj1.x2 && obj1.x2 < obj2.x2) ||
-                (obj1.x1 < obj2.x1 && obj2.x1 < obj1.x2) ||
-                (obj1.x1 < obj2.x2 && obj2.x2 < obj1.x2);
+            return (obj2.x1 <= obj1.x1 && obj1.x1 <= obj2.x2) ||
+                (obj2.x1 <= obj1.x2 && obj1.x2 <= obj2.x2) ||
+                (obj1.x1 <= obj2.x1 && obj2.x1 <= obj1.x2) ||
+                (obj1.x1 <= obj2.x2 && obj2.x2 <= obj1.x2);
         },
         intersectingOnYAxis: function (obj1, obj2) {
-            return (obj2.y1 < obj1.y1 && obj1.y1 < obj2.y2) ||
-                (obj2.y1 < obj1.y2 && obj1.y2 < obj2.y2) ||
-                (obj1.y1 < obj2.y1 && obj2.y1 < obj1.y2) ||
-                (obj1.y1 < obj2.y2 && obj2.y2 < obj1.y2);
+            return (obj2.y1 <= obj1.y1 && obj1.y1 <= obj2.y2) ||
+                (obj2.y1 <= obj1.y2 && obj1.y2 <= obj2.y2) ||
+                (obj1.y1 <= obj2.y1 && obj2.y1 <= obj1.y2) ||
+                (obj1.y1 <= obj2.y2 && obj2.y2 <= obj1.y2);
+        },
+        getRandomInRange: function (min, max) {
+            return Math.floor(Math.random() * (max - min + 1) + min);
         },
         LOGGER: {
             // eslint-disable-next-line no-console

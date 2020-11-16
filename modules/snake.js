@@ -138,19 +138,16 @@ export default function (utils) {
                     newPart.prev = self.tail;
                     self.tail = newPart;
                 }
-                utils.getGame().getBasicFood().drop();
             },
             changeColor: function (colour) {
                 let _part = this.head;
+                const change = (_part, clr) => {
+                    setTimeout(() => _part.color = clr, 0);
+                };
+
                 while (_part.next !== null) {
                     change(_part, colour);
                     _part = _part.next;
-                }
-
-                function change(_part, clr) {
-                    setTimeout(() => {
-                        _part.color = clr;
-                    }, 0);
                 }
             },
             isEatingEatable: function (food) {
@@ -175,33 +172,25 @@ export default function (utils) {
                 });
                 _part.x = nextX;
                 _part.y = nextY;
-                const [
-                    isEatingBasicFood, 
-                    isEatingBonusFood, 
-                    isEatingSpeedBonus
-                ] = [
+
+                [
                     utils.getGame().getBasicFood(), 
                     utils.getGame().getSnakeBonusFood(),
                     utils.getGame().getSpeedBonusFood()
-                ].map(this.isEatingEatable.bind(this));
+                ].map(eatable => {
+                    if(!this.isEatingEatable(eatable)) {
+                        return; 
+                    }
+                    utils.getGameEvents().emit('EATABLE_CONSUMED', eatable);    
+                    if (eatable.getCode() === config.eatables.speedBonus.code) {
+                        utils.getGameEvents().emit(
+                            'USE_SPEED_BONUS',
+                            utils.getGame().getSpeedBonusFood()
+                        );
+                    }
+                });
+
                 this.moveAllParts();
-                if (isEatingBasicFood) {
-                    utils.getGameEvents().emit('EATABLE_CONSUMED', utils.getGame().getBasicFood());
-                } else if (isEatingSpeedBonus) {
-                    utils.getGameEvents().emit(
-                        'EATABLE_CONSUMED',
-                        utils.getGame().getSpeedBonusFood()
-                    );
-                    utils.getGameEvents().emit(
-                        'USE_SPEED_BONUS',
-                        utils.getGame().getSpeedBonusFood()
-                    );
-                } else if (isEatingBonusFood) {
-                    utils.getGameEvents().emit(
-                        'EATABLE_CONSUMED',
-                        utils.getGame().getSnakeBonusFood()
-                    );
-                }
             },
             moveAllParts: function () {
                 if (this.length === 1) {
